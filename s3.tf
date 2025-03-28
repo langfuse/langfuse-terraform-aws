@@ -108,4 +108,4 @@ resource "aws_iam_role_policy" "langfuse_s3_access" {
 }
 
 # Get current AWS account ID
-data "aws_caller_identity" "current" {} 
+data "aws_caller_identity" "current" {}
