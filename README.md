@@ -2,11 +2,15 @@
 
 # AWS Langfuse Terraform module
 
-This repository contains a Terraform module for deploying [Langfuse](https://langfuse.com/) - the open-source LLM observability platform - on AWS. This module aims to provide a production-ready, secure, and scalable deployment using managed services whenever possible.
+> ⚠️ This module is under active development and its interface may change.
+> Please review the changelog between each release and create a GitHub issue for any problems or feature requests.
+
+This repository contains a Terraform module for deploying [Langfuse](https://langfuse.com/) - the open-source LLM observability platform - on AWS.
+This module aims to provide a production-ready, secure, and scalable deployment using managed services whenever possible.
 
 ## Usage
 
-1. Set up the module with the settings that suit your need. A minimal installation requires a `domain` which is under your control only.
+1. Set up the module with the settings that suit your need. A minimal installation requires a `domain` which is under your control.
 
 ```hcl
 module "langfuse" {
@@ -14,13 +18,13 @@ module "langfuse" {
 
   domain = "langfuse.example.com"
   
-  # Optional use a differet name for your installation
+  # Optional use a different name for your installation
   # e.g. when using the module multiple times on the same AWS account
   name   = "langfuse"
   
   # Optional: Configure the VPC
   vpc_cidr = "10.0.0.0/16"
-  use_single_nat_gateway = true  # cheaper, but less resilient
+  use_single_nat_gateway = false  # Using a single NAT gateway decreases costs, but is less resilient
 
   # Optional: Configure the Kubernetes cluster
   kubernetes_version = "1.32"
@@ -33,9 +37,11 @@ module "langfuse" {
   
   # Optional: Configure the cache
   cache_node_type = "cache.t4g.small"
-  cache_instance_count = 1
+  cache_instance_count = 2
 }
 ```
+
+You can also navigate into the `examples/quickstart` directory and run the example there.
 
 2. Apply the DNS zone
 
@@ -62,15 +68,19 @@ terraform apply
 
 ### Known issues
 
-Due to a race-condition between the Fargate Profile creation and the Kubernetes pod scheduling, on the initial system creation the coreDNS containers, and the clickhouse containers must be restarted:
+Due to a race-condition between the Fargate Profile creation and the Kubernetes pod scheduling, on the initial system creation the CoreDNS containers, and the ClickHouse containers must be restarted:
 
 ```bash
+# Connect your kubectl to the EKS cluster
+aws eks update-kubeconfig --name langfuse
+
+# Restart the CoreDNS and ClickHouse containers
 kubectl --namespace kube-system rollout restart deploy coredns
 kubectl --namespace langfuse delete pod langfuse-clickhouse-shard0-{0,1,2} langfuse-zookeeper-{0,1,2} 
 ```
 
-Afterwards your installation should become fully available.
-
+Afterward, your installation should become fully available.
+Navigate to your domain, e.g. langfuse.example.com, to access the Langfuse UI.
 
 ## Features
 
@@ -147,15 +157,6 @@ This module creates a complete Langfuse stack with the following components:
 | cluster_host | EKS Cluster endpoint |
 | cluster_ca_certificate | EKS Cluster CA certificate |
 | cluster_token | EKS Cluster authentication token |
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. Here are some ways you can contribute:
-- Add support for new cloud providers
-- Improve existing configurations
-- Add monitoring and alerting templates
-- Improve documentation
-- Report issues
 
 ## Support
 

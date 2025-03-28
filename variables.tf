@@ -48,7 +48,7 @@ variable "cache_node_type" {
 variable "cache_instance_count" {
   description = "Number of ElastiCache instances used in the cluster"
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "clickhouse_instance_count" {
@@ -70,5 +70,5 @@ variable "fargate_profile_namespaces" {
 variable "use_single_nat_gateway" {
   description = "To use a single NAT Gateway (cheaper), or one per AZ (more resilient)"
   type        = bool
-  default     = true
+  default     = false
 }

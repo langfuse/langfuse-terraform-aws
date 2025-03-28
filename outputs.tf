@@ -19,3 +19,8 @@ output "cluster_token" {
   value = data.aws_eks_cluster_auth.langfuse.token
   sensitive = true
 }
+
+output "route53_nameservers" {
+  description = "Nameserver for the Route53 zone"
+  value = aws_route53_zone.zone.name_servers
+}
