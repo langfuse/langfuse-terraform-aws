@@ -108,6 +108,11 @@ kubectl --namespace langfuse delete pod langfuse-clickhouse-shard0-{0,1,2} langf
 Afterward, your installation should become fully available.
 Navigate to your domain, e.g. langfuse.example.com, to access the Langfuse UI.
 
+## Architecture
+
+![lanfuse-v3-on-aws](./images/langfuse-v3-on-aws.svg)
+> :information_source: For more information on Langfuse's architecture, please check [the official documentation](https://langfuse.com/self-hosting#architecture)
+
 ## Features
 
 This module creates a complete Langfuse stack with the following components:
