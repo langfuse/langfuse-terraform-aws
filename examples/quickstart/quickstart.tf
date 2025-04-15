@@ -7,6 +7,9 @@ module "langfuse" {
   # e.g. when using the module multiple times on the same AWS account
   name = "langfuse"
 
+  # Optional: Configure Langfuse
+  use_encryption_key = true # Enable encryption for sensitive data stored in Langfuse
+
   # Optional: Configure the VPC
   vpc_cidr               = "10.0.0.0/16"
   use_single_nat_gateway = false # Using a single NAT gateway decreases costs, but is less resilient
