@@ -21,6 +21,12 @@ variable "kubernetes_version" {
   default     = "1.32"
 }
 
+variable "use_encryption_key" {
+  description = "Wheter or not to use an Encryption key for LLM API credential and integration credential store"
+  type        = bool
+  default     = false
+}
+
 variable "postgres_instance_count" {
   description = "Number of PostgreSQL instances to create"
   type        = number

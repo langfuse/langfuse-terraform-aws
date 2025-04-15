@@ -69,6 +69,13 @@ langfuse:
       - path: /
         pathType: Prefix
 EOT
+  encryption_values = var.use_encryption_key == false ? "" : <<EOT
+langfuse:
+  encryptionKey:
+    secretKeyRef:
+      name: ${kubernetes_secret.langfuse.metadata[0].name}
+      key: encryption_key
+EOT
 }
 
 resource "kubernetes_namespace" "langfuse" {
@@ -78,10 +85,18 @@ resource "kubernetes_namespace" "langfuse" {
 }
 
 resource "random_bytes" "salt" {
+  # Should be at least 256 bits (32 bytes): https://langfuse.com/self-hosting/configuration#core-infrastructure-settings ~> SALT
   length = 32
 }
 
 resource "random_bytes" "nextauth_secret" {
+  # Should be at least 256 bits (32 bytes): https://langfuse.com/self-hosting/configuration#core-infrastructure-settings ~> NEXTAUTH_SECRET
+  length = 32
+}
+
+resource "random_bytes" "encryption_key" {
+  count = var.use_encryption_key ? 1 : 0
+  # Must be exactly 256 bits (32 bytes): https://langfuse.com/self-hosting/configuration#core-infrastructure-settings ~> ENCRYPTION_KEY
   length = 32
 }
 
@@ -97,6 +112,7 @@ resource "kubernetes_secret" "langfuse" {
     "salt"                = random_bytes.salt.base64
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
     "clickhouse-password" = random_password.clickhouse_password.result
+    "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
   }
 }
 
