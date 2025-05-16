@@ -5,12 +5,14 @@ locals {
   private_subnets = local.create_vpc ? module.vpc[0].private_subnets : var.private_subnets
   vpc_cidr_block  = local.create_vpc ? module.vpc[0].vpc_cidr_block : var.vpc_cidr_block
 
+  tag_name_prefix  = "LangfuseApp"
+
   # Engine-specific configurations
   engine_config = {
     redis = {
       name_suffix           = "redis"
       engine                = "redis"
-      engine_version        = "7.0"    # Consistent with original code
+      engine_version        = "7.0"
       parameter_group_family = "redis7" # For cluster mode disabled or single node
       port                  = 6379
       description           = "Redis"
@@ -18,7 +20,7 @@ locals {
     valkey = {
       name_suffix           = "valkey"
       engine                = "valkey"
-      engine_version        = "7.2"    # AWS supports Valkey 7.2.x and 8.x. Using 7.2 as an example.
+      engine_version        = "7.2" 
       parameter_group_family = "valkey7" # For cluster mode disabled or single node
       port                  = 6379
       description           = "Valkey"

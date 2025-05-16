@@ -55,7 +55,7 @@ resource "aws_vpc_endpoint" "sts" {
   service_name       = "com.amazonaws.${data.aws_region.current.name}.sts"
   vpc_endpoint_type  = "Interface"
   subnet_ids         = module.vpc[0].private_subnets
-  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  security_group_ids = [aws_security_group.vpc_endpoints[0].id]
 
   private_dns_enabled = true
 

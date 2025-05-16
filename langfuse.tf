@@ -37,7 +37,7 @@ clickhouse:
     existingSecretKey: clickhouse-password
 redis:
   deploy: false
-  host: ${aws_elasticache_replication_group.redis.primary_endpoint_address}
+  host: ${aws_elasticache_replication_group.cache.primary_endpoint_address}
   auth:
     existingSecret: langfuse
     existingSecretPasswordKey: redis-password
@@ -109,7 +109,7 @@ resource "kubernetes_secret" "langfuse" {
   }
 
   data = {
-    "redis-password"      = random_password.redis_password.result
+    "redis-password"      = random_password.cache_password.result
     "postgres-password"   = random_password.postgres_password.result
     "salt"                = random_bytes.salt.base64
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
