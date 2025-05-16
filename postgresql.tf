@@ -1,13 +1,13 @@
 resource "aws_security_group" "postgres" {
   name        = "${var.name}-postgres"
   description = "Security group for Langfuse PostgreSQL"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc_id
 
   ingress {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = [module.vpc.vpc_cidr_block]
+    cidr_blocks = [local.vpc_cidr_block]
   }
 
   egress {
@@ -35,7 +35,7 @@ resource "random_password" "postgres_password" {
 # Aurora PostgreSQL Serverless v2 Cluster
 resource "aws_db_subnet_group" "postgres" {
   name       = "${var.name}-postgres-subnet-group"
-  subnet_ids = module.vpc.private_subnets
+  subnet_ids = local.private_subnets
 
   tags = {
     Name = local.tag_name

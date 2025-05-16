@@ -11,9 +11,9 @@ resource "aws_efs_file_system" "langfuse" {
 
 # Mount targets in each private subnet
 resource "aws_efs_mount_target" "eks" {
-  count           = length(module.vpc.private_subnets)
+  count           = length(local.private_subnets)
   file_system_id  = aws_efs_file_system.langfuse.id
-  subnet_id       = module.vpc.private_subnets[count.index]
+  subnet_id       = local.private_subnets[count.index]
   security_groups = [aws_security_group.eks.id]
 }
 
@@ -21,14 +21,14 @@ resource "aws_efs_mount_target" "eks" {
 resource "aws_security_group" "efs" {
   name        = "${var.name}-efs"
   description = "Security group for EFS"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc_id
 
   ingress {
     description = "NFS from VPC"
     from_port   = 2049
     to_port     = 2049
     protocol    = "tcp"
-    cidr_blocks = [module.vpc.vpc_cidr_block]
+    cidr_blocks = [local.vpc_cidr_block]
   }
 
   egress {

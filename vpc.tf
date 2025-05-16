@@ -4,9 +4,11 @@ data "aws_availability_zones" "available" {
 
 locals {
   azs = slice(data.aws_availability_zones.available.names, 0, 3)
+  create_vpc = var.vpc_id == null || var.private_subnets == null || var.vpc_cidr_block == null  ? true : false
 }
 
 module "vpc" {
+  count = local.create_vpc ? 1 : 0
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
 
@@ -48,10 +50,11 @@ module "vpc" {
 
 # VPC Endpoints for AWS services
 resource "aws_vpc_endpoint" "sts" {
-  vpc_id             = module.vpc.vpc_id
+  count              = local.create_vpc ? 1 : 0
+  vpc_id             = module.vpc[0].vpc_id
   service_name       = "com.amazonaws.${data.aws_region.current.name}.sts"
   vpc_endpoint_type  = "Interface"
-  subnet_ids         = module.vpc.private_subnets
+  subnet_ids         = module.vpc[0].private_subnets
   security_group_ids = [aws_security_group.vpc_endpoints.id]
 
   private_dns_enabled = true
@@ -62,10 +65,11 @@ resource "aws_vpc_endpoint" "sts" {
 }
 
 resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = module.vpc.vpc_id
+  count             = local.create_vpc ? 1 : 0
+  vpc_id            = module.vpc[0].vpc_id
   service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = module.vpc.private_route_table_ids
+  route_table_ids   = module.vpc[0].private_route_table_ids
 
   tags = {
     Name = "${local.tag_name} S3 VPC Endpoint"
@@ -74,15 +78,16 @@ resource "aws_vpc_endpoint" "s3" {
 
 # Security group for VPC endpoints
 resource "aws_security_group" "vpc_endpoints" {
+  count       = local.create_vpc ? 1 : 0
   name        = "${var.name}-vpc-endpoints"
   description = "Security group for VPC endpoints"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = module.vpc[0].vpc_id
 
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = [module.vpc.vpc_cidr_block]
+    cidr_blocks = [module.vpc[0].vpc_cidr_block]
   }
 
   tags = {

@@ -78,3 +78,33 @@ variable "use_single_nat_gateway" {
   type        = bool
   default     = false
 }
+
+variable "vpc_id" {
+  description = "VPC ID to use for the cluster, overrides the VPC CIDR"
+  type        = string
+  default     = null
+}
+
+variable "private_subnets" {
+  description = "Private subnets in which to create the cluster"
+  type        = list(string)
+  default     = null
+}
+
+variable "vpc_cidr_block" {
+  description = "VPC CIDR block to use for the cluster, overrides the VPC CIDR"
+  type        = string
+  default     = null
+}
+
+# Define an input variable to choose the cache engine
+variable "cache_engine_type" {
+  description = "The type of cache engine to deploy. Valid values are 'redis' or 'valkey'."
+  type        = string
+  default     = "valkey" # Default to Redis
+
+  validation {
+    condition     = contains(["redis", "valkey"], var.cache_engine_type)
+    error_message = "Allowed values for cache_engine_type are 'redis' or 'valkey'."
+  }
+}
