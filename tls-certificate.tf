@@ -16,7 +16,7 @@ resource "aws_acm_certificate" "cert" {
 resource "aws_route53_zone" "zone" {
   name = var.domain
 
-  vpc ] {
+  vpc {
     vpc_id = local.vpc_id
   }
 
