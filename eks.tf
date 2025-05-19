@@ -165,7 +165,7 @@ resource "kubernetes_config_map" "aws_auth" {
       groups:
         - system:bootstrappers
         - system:nodes
-    - rolearn: arn:aws:iam::226202863679:role/aws-reserved/sso.amazonaws.com/eu-west-1/AWSReservedSSO_AgentsAdmin_d7d939dbcd0d6dcf
+    - rolearn: ${var.agent_admin_role_arn}
       username: admin
       groups:
         - system:masters
