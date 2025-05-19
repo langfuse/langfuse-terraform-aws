@@ -125,6 +125,7 @@ resource "helm_release" "langfuse" {
   chart            = "langfuse"
   namespace        = "langfuse"
   create_namespace = true
+  timeout          = 1200
 
   values = [
     local.langfuse_values,
