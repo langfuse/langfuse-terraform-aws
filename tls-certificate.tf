@@ -131,13 +131,12 @@ resource "aws_acmpca_certificate" "domain_issued_cert" {
 resource "aws_acm_certificate" "imported_private_cert" {
   private_key       = tls_private_key.domain_key.private_key_pem
   certificate_body  = aws_acmpca_certificate.domain_issued_cert.certificate
-  # The certificate chain for an end-entity certificate signed by your Root CA is the Root CA's certificate itself.
-  certificate_chain = aws_acmpca_certificate.private_root_ca_self_signed_cert.certificate # This is the Root CA's certificate.
+  certificate_chain = aws_acmpca_certificate.private_root_ca_self_signed_cert.certificate
 
   tags = {
-    Name        = "${local.tag_name} (Private)"
-    Environment = "internal"
-    Domain      = var.domain
+    Name        = "${local.tag_name}-Private" # Replaced "(Private)" with "-Private"
+    Environment = "internal" # This should be fine
+    Domain      = var.domain     # This should be fine (assuming var.domain contains valid characters like langfuse.vertice.local)
   }
 
   lifecycle {
