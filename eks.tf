@@ -150,4 +150,25 @@ resource "aws_iam_role_policy_attachment" "eks_service_policy" {
 resource "aws_cloudwatch_log_group" "eks" {
   name              = "/aws/eks/${var.name}/cluster"
   retention_in_days = 30
-} 
+}
+
+resource "kubernetes_config_map" "aws_auth" {
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    mapRoles = <<EOT
+    - rolearn: arn:aws:iam::226202863679:role/langfuse-eks
+      username: system:node:{{EC2PrivateDNSName}}
+      groups:
+        - system:bootstrappers
+        - system:nodes
+    - rolearn: arn:aws:iam::226202863679:role/aws-reserved/sso.amazonaws.com/eu-west-1/AWSReservedSSO_AgentsAdmin_d7d939dbcd0d6dcf
+      username: admin
+      groups:
+        - system:masters
+    EOT
+  }
+}

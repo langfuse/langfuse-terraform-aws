@@ -108,3 +108,10 @@ variable "cache_engine_type" {
     error_message = "Allowed values for cache_engine_type are 'redis' or 'valkey'."
   }
 }
+
+variable "agent_admin_role_arn" {
+  description = "The ARN of the AgentAdmin IAM role to grant EKS admin access."
+  type        = string
+  # Example: default = "arn:aws:iam::YOUR_ACCOUNT_ID:role/AgentAdmin"
+  # Make sure to replace YOUR_ACCOUNT_ID and the role name if it's different.
+}
