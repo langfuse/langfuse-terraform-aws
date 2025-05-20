@@ -16,7 +16,7 @@ output "cluster_ca_certificate" {
 
 output "cluster_token" {
   description = "EKS Cluster Token to use for a Kubernetes terraform provider"
-  value       = data.aws_eks_cluster_auth.langfuse.token
+  value       = data.aws_eks_cluster_auth.langfuse_admin_role.token
   sensitive   = true
 }
 
