@@ -2,7 +2,7 @@ locals {
   tag_name        = lower(var.name) == "langfuse" ? "Langfuse" : "Langfuse ${var.name}"
 
   create_vpc           = var.vpc_id == null || var.private_subnets == null || var.vpc_cidr_block == null  ? true : false
-  private_subnets_list = local.create_vpc && var.private_subnets != null ? var.private_subnets : []
+  private_subnets_list = (not(local.create_vpc) && var.private_subnets != null) ? var.private_subnets : []
   vpc_id               = local.create_vpc ? module.vpc[0].vpc_id : var.vpc_id
   private_subnets      = local.create_vpc ? module.vpc[0].private_subnets : local.private_subnets_list
   vpc_cidr_block       = local.create_vpc ? module.vpc[0].vpc_cidr_block : var.vpc_cidr_block
