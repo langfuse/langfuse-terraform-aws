@@ -156,23 +156,19 @@ resource "aws_cloudwatch_log_group" "eks" {
   retention_in_days = 30
 }
 
-#resource "kubernetes_config_map_v1_data" "aws_auth" {
-#  metadata {
-#    name      = "aws-auth"
-#    namespace = "kube-system"
-#  }
-#
-#  data = {
-#    mapRoles = <<EOT
-#    - rolearn: arn:aws:iam::226202863679:role/langfuse-eks
-#      username: system:node:{{EC2PrivateDNSName}}
-#      groups:
-#        - system:bootstrappers
-#        - system:nodes
-#    - rolearn: ${var.agent_admin_role_arn}
-#      username: admin
-#      groups:
-#        - system:masters
-#    EOT
-#  }
-#}
+resource "aws_eks_access_entry" "admin_role_access" {
+  cluster_name  = aws_eks_cluster.langfuse.name
+  principal_arn = var.agent_admin_role_arn 
+  type = "STANDARD" # Or FARGATE_LINUX, etc.
+}
+
+resource "aws_eks_access_policy_association" "admin_policy_association" {
+  cluster_name  = aws_eks_cluster.langfuse.name
+  principal_arn = var.agent_admin_role_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # Predefined admin policy
+  access_scope {
+    type = "cluster" # Or "namespace" for namespace-scoped permissions
+  }
+
+  depends_on = [aws_eks_access_entry.admin_role_access]
+}
