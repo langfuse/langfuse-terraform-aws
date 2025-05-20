@@ -152,23 +152,23 @@ resource "aws_cloudwatch_log_group" "eks" {
   retention_in_days = 30
 }
 
-resource "kubernetes_config_map_v1_data" "aws_auth" {
-  metadata {
-    name      = "aws-auth"
-    namespace = "kube-system"
-  }
-
-  data = {
-    mapRoles = <<EOT
-    - rolearn: arn:aws:iam::226202863679:role/langfuse-eks
-      username: system:node:{{EC2PrivateDNSName}}
-      groups:
-        - system:bootstrappers
-        - system:nodes
-    - rolearn: ${var.agent_admin_role_arn}
-      username: admin
-      groups:
-        - system:masters
-    EOT
-  }
-}
+#resource "kubernetes_config_map_v1_data" "aws_auth" {
+#  metadata {
+#    name      = "aws-auth"
+#    namespace = "kube-system"
+#  }
+#
+#  data = {
+#    mapRoles = <<EOT
+#    - rolearn: arn:aws:iam::226202863679:role/langfuse-eks
+#      username: system:node:{{EC2PrivateDNSName}}
+#      groups:
+#        - system:bootstrappers
+#        - system:nodes
+#    - rolearn: ${var.agent_admin_role_arn}
+#      username: admin
+#      groups:
+#        - system:masters
+#    EOT
+#  }
+#}
