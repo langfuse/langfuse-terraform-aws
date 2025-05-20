@@ -7,6 +7,10 @@ resource "aws_eks_cluster" "langfuse" {
   role_arn = aws_iam_role.eks.arn
   version  = var.kubernetes_version
 
+  access_config {
+    authentication_mode = "API_AND_CONFIG_MAP"
+  }
+
   vpc_config {
     subnet_ids              = local.private_subnets
     endpoint_private_access = true
