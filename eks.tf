@@ -1,4 +1,5 @@
 data "aws_eks_cluster_auth" "langfuse" {
+  provider = aws.eks_admin_role
   name = aws_eks_cluster.langfuse.name
 }
 
@@ -158,7 +159,7 @@ resource "aws_cloudwatch_log_group" "eks" {
 
 resource "aws_eks_access_entry" "admin_role_access" {
   cluster_name  = aws_eks_cluster.langfuse.name
-  principal_arn = var.agent_admin_role_arn 
+  principal_arn = var.agent_admin_role_arn
   type = "STANDARD" # Or FARGATE_LINUX, etc.
 }
 
