@@ -101,15 +101,22 @@ resource "aws_ec2_tag" "subnet_tag_internal_elb" {
   value       = "1"
 }
 
-resource "aws_ec2_tag" "subnet_tag_elb" {
+resource "aws_ec2_tag" "subnet_tag_cluster" {
   for_each = toset(local.private_subnets_list)
+  resource_id = each.value
+  key         = "kubernetes.io/cluster/${var.name}"
+  value       = "shared"
+}
+
+resource "aws_ec2_tag" "subnet_tag_elb" {
+  for_each = toset(local.public_subnets_list)
   resource_id = each.value
   key         = "kubernetes.io/role/elb"
   value       = "1"
 }
 
 resource "aws_ec2_tag" "subnet_tag_cluster" {
-  for_each = toset(local.private_subnets_list)
+  for_each = toset(local.public_subnets_list)
   resource_id = each.value
   key         = "kubernetes.io/cluster/${var.name}"
   value       = "shared"

@@ -91,6 +91,12 @@ variable "private_subnets" {
   default     = null
 }
 
+variable "public_subnets" {
+  description = "Public subnets in which to create the cluster"
+  type        = list(string)
+  default     = null
+}
+
 variable "vpc_cidr_block" {
   description = "VPC CIDR block to use for the cluster, overrides the VPC CIDR"
   type        = string
@@ -114,4 +120,10 @@ variable "agent_admin_role_arn" {
   type        = string
   # Example: default = "arn:aws:iam::YOUR_ACCOUNT_ID:role/AgentAdmin"
   # Make sure to replace YOUR_ACCOUNT_ID and the role name if it's different.
+}
+
+variable "public_endpoint" {
+  description = "Public endpoint for langfuse"
+  type        = bool
+  default     = true
 }

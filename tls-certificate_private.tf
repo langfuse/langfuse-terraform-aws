@@ -1,4 +1,5 @@
 resource "aws_s3_bucket" "crl_bucket" {
+  count = var.public_endpoint ? 0 : 1
   bucket_prefix = "acmpca-crl-${var.name}-"
   force_destroy = true
 
@@ -9,7 +10,8 @@ resource "aws_s3_bucket" "crl_bucket" {
 }
 
 resource "aws_s3_bucket_policy" "crl_bucket_policy" {
-  bucket = aws_s3_bucket.crl_bucket.id
+  count = var.public_endpoint ? 0 : 1
+  bucket = aws_s3_bucket.crl_bucket[0].id
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -26,8 +28,8 @@ resource "aws_s3_bucket_policy" "crl_bucket_policy" {
           "s3:GetBucketLocation"
         ],
         Resource = [
-          aws_s3_bucket.crl_bucket.arn,
-          "${aws_s3_bucket.crl_bucket.arn}/*"
+          aws_s3_bucket.crl_bucket[0].arn,
+          "${aws_s3_bucket.crl_bucket[0].arn}/*"
         ]
       }
     ]
@@ -35,6 +37,7 @@ resource "aws_s3_bucket_policy" "crl_bucket_policy" {
 }
 
 resource "aws_acmpca_certificate_authority" "private_root_ca" {
+  count = var.public_endpoint ? 0 : 1
   type = "ROOT"
   certificate_authority_configuration {
     key_algorithm     = "RSA_4096"
@@ -48,7 +51,7 @@ resource "aws_acmpca_certificate_authority" "private_root_ca" {
     crl_configuration {
       enabled            = true
       expiration_in_days = 7
-      s3_bucket_name     = aws_s3_bucket.crl_bucket.id
+      s3_bucket_name     = aws_s3_bucket.crl_bucket[0].id
       s3_object_acl      = "BUCKET_OWNER_FULL_CONTROL"
     }
   }
@@ -64,10 +67,11 @@ resource "aws_acmpca_certificate_authority" "private_root_ca" {
 
 # Step 1: Issue the self-signed certificate for the Root CA itself
 resource "aws_acmpca_certificate" "private_root_ca_self_signed_cert" {
+  count = var.public_endpoint ? 0 : 1
   # This certificate is for the CA itself.
-  certificate_authority_arn   = aws_acmpca_certificate_authority.private_root_ca.arn
-  certificate_signing_request = aws_acmpca_certificate_authority.private_root_ca.certificate_signing_request # Fetches the CA's own CSR
-  signing_algorithm           = aws_acmpca_certificate_authority.private_root_ca.certificate_authority_configuration[0].signing_algorithm # Match the CA's signing algorithm
+  certificate_authority_arn   = aws_acmpca_certificate_authority.private_root_ca[0].arn
+  certificate_signing_request = aws_acmpca_certificate_authority.private_root_ca[0].certificate_signing_request # Fetches the CA's own CSR
+  signing_algorithm           = aws_acmpca_certificate_authority.private_root_ca[0].certificate_authority_configuration[0].signing_algorithm # Match the CA's signing algorithm
   template_arn                = "arn:aws:acm-pca:::template/RootCACertificate/V1"                                                          # Special template for Root CA's own cert
 
   validity {
@@ -81,27 +85,31 @@ resource "aws_acmpca_certificate" "private_root_ca_self_signed_cert" {
 
 # Step 2: Import the self-signed certificate into the Root CA. This should activate it.
 resource "aws_acmpca_certificate_authority_certificate" "private_root_ca_cert_import" {
-  certificate_authority_arn = aws_acmpca_certificate_authority.private_root_ca.arn
-  certificate               = aws_acmpca_certificate.private_root_ca_self_signed_cert.certificate
-  certificate_chain         = aws_acmpca_certificate.private_root_ca_self_signed_cert.certificate_chain # For a root CA, chain is usually just its own cert or null.
+  count = var.public_endpoint ? 0 : 1
+  certificate_authority_arn = aws_acmpca_certificate_authority.private_root_ca[0].arn
+  certificate               = aws_acmpca_certificate.private_root_ca_self_signed_cert[0].certificate
+  certificate_chain         = aws_acmpca_certificate.private_root_ca_self_signed_cert[0].certificate_chain # For a root CA, chain is usually just its own cert or null.
                                                                                                        # This output from aws_acmpca_certificate should be correct.
   depends_on = [aws_acmpca_certificate.private_root_ca_self_signed_cert]
 }
 
 # Optional: Add a small delay if direct dependency isn't enough due to eventual consistency
 resource "time_sleep" "wait_for_ca_activation" {
+  count = var.public_endpoint ? 0 : 1
   depends_on = [aws_acmpca_certificate_authority_certificate.private_root_ca_cert_import]
   create_duration = "30s" # Start with 30s, adjust if needed. Remove if not necessary.
 }
 
 # --- Certificate for your specific domain (langfuse.vertice.local) ---
 resource "tls_private_key" "domain_key" {
+  count = var.public_endpoint ? 0 : 1
   algorithm = "RSA"
   rsa_bits  = 2048
 }
 
 resource "tls_cert_request" "domain_csr" {
-  private_key_pem = tls_private_key.domain_key.private_key_pem
+  count = var.public_endpoint ? 0 : 1
+  private_key_pem = tls_private_key.domain_key[0].private_key_pem
   subject {
     common_name  = var.domain # e.g., langfuse.vertice.local
     organization = "My Organization"
@@ -110,8 +118,9 @@ resource "tls_cert_request" "domain_csr" {
 }
 
 resource "aws_acmpca_certificate" "domain_issued_cert" {
-  certificate_authority_arn   = aws_acmpca_certificate_authority.private_root_ca.arn
-  certificate_signing_request = tls_cert_request.domain_csr.cert_request_pem
+  count = var.public_endpoint ? 0 : 1
+  certificate_authority_arn   = aws_acmpca_certificate_authority.private_root_ca[0].arn
+  certificate_signing_request = tls_cert_request.domain_csr[0].cert_request_pem
   signing_algorithm           = "SHA256WITHRSA" # Common algorithm for end-entity certs
   template_arn                = "arn:aws:acm-pca:::template/EndEntityCertificate/V1"
 
@@ -129,9 +138,10 @@ resource "aws_acmpca_certificate" "domain_issued_cert" {
 
 # --- Import into ACM for ALB ---
 resource "aws_acm_certificate" "imported_private_cert" {
-  private_key       = tls_private_key.domain_key.private_key_pem
-  certificate_body  = aws_acmpca_certificate.domain_issued_cert.certificate
-  certificate_chain = aws_acmpca_certificate.private_root_ca_self_signed_cert.certificate
+  count = var.public_endpoint ? 0 : 1
+  private_key       = tls_private_key.domain_key[0].private_key_pem
+  certificate_body  = aws_acmpca_certificate.domain_issued_cert[0].certificate
+  certificate_chain = aws_acmpca_certificate.private_root_ca_self_signed_cert[0].certificate
 
   tags = {
     Name        = "${local.tag_name}-Private" # Replaced "(Private)" with "-Private"
@@ -145,7 +155,8 @@ resource "aws_acm_certificate" "imported_private_cert" {
 }
 
 # Create Route53 zone for the domain
-resource "aws_route53_zone" "zone" {
+resource "aws_route53_zone" "private_zone" {
+  count = var.public_endpoint ? 0 : 1
   name = var.domain
 
   vpc {
@@ -157,23 +168,10 @@ resource "aws_route53_zone" "zone" {
   }
 }
 
-# Get the ALB details
-data "aws_lb" "ingress" {
-  tags = {
-    "elbv2.k8s.aws/cluster"    = var.name
-    "ingress.k8s.aws/stack"    = "langfuse/langfuse"
-    "ingress.k8s.aws/resource" = "LoadBalancer"
-  }
-
-  depends_on = [
-    helm_release.aws_load_balancer_controller,
-    helm_release.langfuse
-  ]
-}
-
 # Create Route53 record for the ALB
-resource "aws_route53_record" "langfuse" {
-  zone_id = aws_route53_zone.zone.zone_id
+resource "aws_route53_record" "langfuse_private" {
+  count = var.public_endpoint ? 0 : 1
+  zone_id = aws_route53_zone.private_zone[0].zone_id
   name    = var.domain
   type    = "A"
 
@@ -183,3 +181,5 @@ resource "aws_route53_record" "langfuse" {
     evaluate_target_health = true
   }
 }
+
+# data.aws_lb was moved to ingress.tf, as it is shared between public and private endpoints

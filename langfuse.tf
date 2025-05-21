@@ -1,4 +1,7 @@
 locals {
+  ingress_scheme = var.public_endpoint ? "internet-facing" : "internal"
+  ingress_subnets = var.public_endpoint ? join(",", local.public_subnets) : join(",", local.private_subnets)
+
   langfuse_values = <<EOT
 global:
   defaultStorageClass: efs
@@ -61,11 +64,11 @@ langfuse:
     enabled: true
     className: alb
     annotations:
-      alb.ingress.kubernetes.io/scheme: internal
+      alb.ingress.kubernetes.io/scheme: ${local.ingress_scheme}
       alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
-      alb.ingress.kubernetes.io/subnets: ${join(",", local.private_subnets)}
+      alb.ingress.kubernetes.io/subnets: ${local.ingress_subnets}
     hosts:
     - host: ${var.domain}
       paths:

@@ -22,5 +22,5 @@ output "cluster_token" {
 
 output "route53_nameservers" {
   description = "Nameserver for the Route53 zone"
-  value       = aws_route53_zone.zone.name_servers
+  value       = local.aws_route53_zone_ns
 }
