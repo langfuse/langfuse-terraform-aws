@@ -65,6 +65,7 @@ langfuse:
       alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/subnets: ${join(",", local.private_subnets)}
     hosts:
     - host: ${var.domain}
       paths:

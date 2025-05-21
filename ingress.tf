@@ -326,11 +326,6 @@ resource "helm_release" "aws_load_balancer_controller" {
     value = local.vpc_id
   }
 
-  set {
-    name  = "subnets"
-    value = join(",", local.private_subnets)
-  }
-
   depends_on = [
     kubernetes_service_account.aws_load_balancer_controller,
     aws_iam_role.aws_load_balancer_controller,
