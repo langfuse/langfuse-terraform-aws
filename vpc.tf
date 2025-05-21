@@ -101,7 +101,7 @@ resource "aws_ec2_tag" "subnet_tag_internal_elb" {
   value       = "1"
 }
 
-resource "aws_ec2_tag" "subnet_tag_cluster" {
+resource "aws_ec2_tag" "subnet_tag_cluster_private" {
   for_each = toset(local.private_subnets_list)
   resource_id = each.value
   key         = "kubernetes.io/cluster/${var.name}"
@@ -115,7 +115,7 @@ resource "aws_ec2_tag" "subnet_tag_elb" {
   value       = "1"
 }
 
-resource "aws_ec2_tag" "subnet_tag_cluster" {
+resource "aws_ec2_tag" "subnet_tag_cluster_public" {
   for_each = toset(local.public_subnets_list)
   resource_id = each.value
   key         = "kubernetes.io/cluster/${var.name}"
