@@ -328,7 +328,7 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   set {
     name  = "subnets"
-    value = local.private_subnets
+    value = join(",", local.private_subnets)
   }
 
   depends_on = [
