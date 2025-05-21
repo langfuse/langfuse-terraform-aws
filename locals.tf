@@ -6,7 +6,7 @@ locals {
   public_subnets_list  = (local.create_vpc == false && var.public_subnets != null) ? var.public_subnets : []
   vpc_id               = local.create_vpc ? module.vpc[0].vpc_id : var.vpc_id
   private_subnets      = local.create_vpc ? module.vpc[0].private_subnets : local.private_subnets_list
-  public_subnets       = local.create_vpc ? module.vpc[0].public_subnets : var.public_subnets_list
+  public_subnets       = local.create_vpc ? module.vpc[0].public_subnets : local.public_subnets_list
   vpc_cidr_block       = local.create_vpc ? module.vpc[0].vpc_cidr_block : var.vpc_cidr_block
 
   tag_name_prefix  = "LangfuseApp"
