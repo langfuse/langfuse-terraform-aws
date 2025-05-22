@@ -92,7 +92,7 @@ langfuse:
       name: ${kubernetes_secret.langfuse.metadata[0].name}
       key: encryption_key
 EOT
-  okta_values = var.enable_okta ? <<EOT
+  okta_values = var.enable_okta == false ? "" : <<EOT
 langfuse:
   auth:
     providers:
@@ -101,7 +101,6 @@ langfuse:
         clientSecret: ${local.okta_client_secret}
         issuer: ${var.okta_settings.issuer}
 EOT
-  : ""
 }
 
 data "aws_secretsmanager_secret" "langfuse_secrets" {
