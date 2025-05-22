@@ -2,6 +2,16 @@ locals {
   ingress_scheme = var.public_endpoint ? "internet-facing" : "internal"
   ingress_subnets = var.public_endpoint ? join(",", local.public_subnets) : join(",", local.private_subnets)
 
+  okta_client_secret = var.enable_okta ? (
+    var.use_encryption_key == false ?
+    data.aws_secretsmanager_secret_version.langfuse_secrets_version[0].secret_string :
+    <<EOT
+          secretKeyRef:
+            name: langfuse
+            key: okta-client-secret
+EOT
+  ) : ""
+
   langfuse_values = <<EOT
 global:
   defaultStorageClass: efs
@@ -82,6 +92,26 @@ langfuse:
       name: ${kubernetes_secret.langfuse.metadata[0].name}
       key: encryption_key
 EOT
+  okta_values = var.enable_okta ? <<EOT
+langfuse:
+  auth:
+    providers:
+      okta:
+        clientId: ${var.okta_settings.client_id}
+        clientSecret: ${local.okta_client_secret}
+        issuer: ${var.okta_settings.issuer}
+EOT
+  : ""
+}
+
+data "aws_secretsmanager_secret" "langfuse_secrets" {
+  count = var.okta_settings != null ? 1 : 0
+  name  = var.okta_settings.client_secret_secrets_name
+}
+
+data "aws_secretsmanager_secret_version" "langfuse_secrets_version" {
+  count = var.okta_settings != null ? 1 : 0
+  secret_id = data.aws_secretsmanager_secret.langfuse_secrets[0].id
 }
 
 resource "kubernetes_namespace" "langfuse" {
@@ -112,14 +142,17 @@ resource "kubernetes_secret" "langfuse" {
     namespace = "langfuse"
   }
 
-  data = {
+  data = merge({
     "redis-password"      = random_password.cache_password.result
     "postgres-password"   = random_password.postgres_password.result
     "salt"                = random_bytes.salt.base64
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
     "clickhouse-password" = random_password.clickhouse_password.result
     "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
-  }
+  },
+  var.enable_okta ? {
+    "okta-client-secret" = data.aws_secretsmanager_secret_version.langfuse_secrets_version[0].secret_string
+  } : {})
 }
 
 resource "helm_release" "langfuse" {
@@ -134,7 +167,19 @@ resource "helm_release" "langfuse" {
   values = [
     local.langfuse_values,
     local.ingress_values,
+    local.encryption_values,
+    local.okta_values
   ]
+
+  set {
+    name  = "langfuse.auth.disableUsernamePassword"
+    value = var.enable_okta ? "true" : "false"
+  }
+
+  set {
+    name  = "langfuse.auth.disableSignup"
+    value = var.enable_okta ? "true" : "false"
+  }
 
   depends_on = [
     aws_iam_role.langfuse_irsa,

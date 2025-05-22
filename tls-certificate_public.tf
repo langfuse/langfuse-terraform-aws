@@ -65,4 +65,14 @@ resource "aws_route53_record" "langfuse_public" {
   }
 }
 
+resource "aws_route53_record" "public_ns" {
+  count = var.public_endpoint && var.public_zone != null ? 1 : 0
+
+  zone_id = var.public_zone
+  name    = var.domain
+  type    = "NS"
+  ttl     = "30"
+  records = aws_route53_zone.public_zone[0].name_servers
+}
+
 # data.aws_lb was moved to ingress.tf, as it is shared between public and private endpoints

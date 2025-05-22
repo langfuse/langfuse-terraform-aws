@@ -127,3 +127,25 @@ variable "public_endpoint" {
   type        = bool
   default     = true
 }
+
+variable "public_zone" {
+  description = "Zone where to deploy the langfuse subdomain"
+  type        = string
+  default     = null
+}
+
+variable "enable_okta" {
+  description = "Enable SSO for the cluster"
+  type        = bool
+  default     = false
+}
+
+variable "okta_settings" {
+  description = "Okta settings for authentication."
+  type = object({
+    client_id                  = string
+    client_secret_secrets_name = string
+    issuer                     = string
+  })
+  default = null
+}
