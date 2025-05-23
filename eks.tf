@@ -165,7 +165,7 @@ resource "aws_eks_access_entry" "admin_role_access" {
 
 resource "aws_eks_access_policy_association" "admin_policy_association" {
   cluster_name  = aws_eks_cluster.langfuse.name
-  principal_arn = var.agent_admin_role_arn
+  principal_arn = var.eks_admin_role_arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # Predefined admin policy
   access_scope {
     type = "cluster" # Or "namespace" for namespace-scoped permissions
