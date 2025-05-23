@@ -6,6 +6,7 @@ locals {
     var.use_encryption_key == false ?
     data.aws_secretsmanager_secret_version.langfuse_secrets_version[0].secret_string :
     <<EOT
+
           secretKeyRef:
             name: langfuse
             key: okta-client-secret
