@@ -50,7 +50,7 @@ clickhouse:
     existingSecret: langfuse
     existingSecretKey: clickhouse-password
   zookeeper:
-    resourcePreset: medium
+    resourcesPreset: medium
 redis:
   deploy: false
   host: ${aws_elasticache_replication_group.cache.primary_endpoint_address}
