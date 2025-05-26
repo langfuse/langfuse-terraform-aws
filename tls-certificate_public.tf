@@ -24,7 +24,7 @@ resource "aws_acm_certificate" "cert" {
 
   depends_on = [
     aws_route53_zone.public_zone,
-    aws_route53_recordpublic_ns
+    aws_route53_record.public_ns
   ]
 }
 
