@@ -21,6 +21,11 @@ resource "aws_acm_certificate" "cert" {
   lifecycle {
     create_before_destroy = true
   }
+
+  depends_on = [
+    aws_route53_zone.public_zone,
+    aws_route53_recordpublic_ns
+  ]
 }
 
 # Create Route53 zone for the domain

@@ -49,6 +49,8 @@ clickhouse:
   auth:
     existingSecret: langfuse
     existingSecretKey: clickhouse-password
+  zookeeper:
+    resourcePreset: medium
 redis:
   deploy: false
   host: ${aws_elasticache_replication_group.cache.primary_endpoint_address}
