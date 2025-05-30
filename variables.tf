@@ -168,6 +168,6 @@ variable "langfuse_chart_version" {
 
 variable "resource_settings" {
   description = "Resource settings (optional, but highly recommended, at least for web and zookeeper)"
-  type        = object({})
+  type        = any
   default     = {}
 }
