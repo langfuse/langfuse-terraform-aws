@@ -147,3 +147,27 @@ variable "okta_settings" {
   })
   default = null
 }
+
+variable "disable_username_password_authentication" {
+  description = "Disable integrated user/password authentication"
+  type        = bool
+  default     = false
+}
+
+variable "disable_signup" {
+  description = "Disable the ability to sign up for a new account."
+  type        = bool
+  default     = false
+}
+
+variable "langfuse_chart_version" {
+  description = "Version of Langfuse Helm Chart"
+  type        = string
+  value       = "1.2.12"
+}
+
+variable "resource_settings" {
+  description = "Resource settings (optional, but highly recommended, at least for web and zookeeper)"
+  type        = object({})
+  default     = {}
+}

@@ -1,6 +1,7 @@
 locals {
-  ingress_scheme = var.public_endpoint ? "internet-facing" : "internal"
-  ingress_subnets = var.public_endpoint ? join(",", local.public_subnets) : join(",", local.private_subnets)
+  ingress_scheme    = var.public_endpoint ? "internet-facing" : "internal"
+  ingress_subnets   = var.public_endpoint ? join(",", local.public_subnets) : join(",", local.private_subnets)
+  resource_settings = yamlencode(var.resource_settings)
 
   okta_client_secret = var.enable_okta ? (
     var.use_encryption_key == false ?
@@ -87,6 +88,9 @@ langfuse:
       paths:
       - path: /
         pathType: Prefix
+  auth:
+    disableUsernamePassword: ${var.disable_username_password_authentication}
+    disableSignup: ${var.disable_signup}
 EOT
   encryption_values = var.use_encryption_key == false ? "" : <<EOT
 langfuse:
@@ -103,6 +107,7 @@ langfuse:
         clientId: ${var.okta_settings.client_id}
         clientSecret: ${local.okta_client_secret}
         issuer: ${var.okta_settings.issuer}
+        checks: state
 EOT
 }
 
@@ -160,7 +165,7 @@ resource "kubernetes_secret" "langfuse" {
 resource "helm_release" "langfuse" {
   name             = "langfuse"
   repository       = "https://langfuse.github.io/langfuse-k8s"
-  version          = "1.2.12"
+  version          = var.langfuse_chart_version
   chart            = "langfuse"
   namespace        = "langfuse"
   create_namespace = true
@@ -170,18 +175,9 @@ resource "helm_release" "langfuse" {
     local.langfuse_values,
     local.ingress_values,
     local.encryption_values,
-    local.okta_values
+    local.okta_values,
+    local.resource_settings
   ]
-
-  set {
-    name  = "langfuse.auth.disableUsernamePassword"
-    value = var.enable_okta ? "true" : "false"
-  }
-
-  set {
-    name  = "langfuse.auth.disableSignup"
-    value = var.enable_okta ? "true" : "false"
-  }
 
   depends_on = [
     aws_iam_role.langfuse_irsa,
