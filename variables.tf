@@ -163,7 +163,7 @@ variable "disable_signup" {
 variable "langfuse_chart_version" {
   description = "Version of Langfuse Helm Chart"
   type        = string
-  value       = "1.2.12"
+  default     = "1.2.12"
 }
 
 variable "resource_settings" {
