@@ -92,9 +92,14 @@ langfuse:
     providers:
       okta:
         clientId: ${var.okta_settings.client_id}
-        clientSecret: ${data.aws_secretsmanager_secret_version.langfuse_secrets_version[0].secret_string}
         issuer: ${var.okta_settings.issuer}
         checks: state
+  additionalEnv:
+    - name: AUTH_OKTA_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: langfuse
+          key: okta-client-secret
 EOT
 }
 
@@ -136,14 +141,17 @@ resource "kubernetes_secret" "langfuse" {
     namespace = "langfuse"
   }
 
-  data = {
+  data = merge({
     "redis-password"      = random_password.cache_password.result
     "postgres-password"   = random_password.postgres_password.result
     "salt"                = random_bytes.salt.base64
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
     "clickhouse-password" = random_password.clickhouse_password.result
     "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
-  }
+  },
+  var.enable_okta ? {
+    "okta-client-secret" = data.aws_secretsmanager_secret_version.langfuse_secrets_version[0].secret_string
+  } : {})
 }
 
 resource "helm_release" "langfuse" {
