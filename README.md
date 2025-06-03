@@ -14,7 +14,7 @@ This module aims to provide a production-ready, secure, and scalable deployment 
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.2.3"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.2.4"
 
   domain = "langfuse.example.com"
 
@@ -38,6 +38,9 @@ module "langfuse" {
   # Optional: Configure the cache
   cache_node_type = "cache.t4g.small"
   cache_instance_count = 2
+
+  # Optional: Configure Langfuse Helm chart version
+  langfuse_helm_chart_version = "1.2.8"
 }
 
 provider "kubernetes" {
@@ -181,6 +184,7 @@ This module creates a complete Langfuse stack with the following components:
 | postgres_max_capacity      | Maximum ACU capacity for PostgreSQL Serverless v2                                              | number       | 2.0                                    |    no    |
 | cache_node_type            | ElastiCache node type                                                                          | string       | "cache.t4g.small"                      |    no    |
 | cache_instance_count       | Number of ElastiCache instances                                                                | number       | 1                                      |    no    |
+| langfuse_helm_chart_version | Version of the Langfuse Helm chart to deploy                                                  | string       | "1.2.8"                                |    no    |
 
 ## Outputs
 

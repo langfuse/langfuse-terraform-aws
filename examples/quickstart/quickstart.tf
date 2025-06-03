@@ -26,6 +26,9 @@ module "langfuse" {
   # Optional: Configure the cache
   cache_node_type      = "cache.t4g.small"
   cache_instance_count = 2
+
+  # Optional: Configure Langfuse Helm chart version
+  langfuse_helm_chart_version = "1.2.8"
 }
 
 provider "kubernetes" {

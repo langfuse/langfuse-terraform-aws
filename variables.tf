@@ -78,3 +78,9 @@ variable "use_single_nat_gateway" {
   type        = bool
   default     = false
 }
+
+variable "langfuse_helm_chart_version" {
+  description = "Version of the Langfuse Helm chart to deploy"
+  type        = string
+  default     = "1.2.8"
+}
