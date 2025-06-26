@@ -14,13 +14,16 @@ This module aims to provide a production-ready, secure, and scalable deployment 
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.2.5"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.2.6"
 
   domain = "langfuse.example.com"
 
   # Optional use a different name for your installation
   # e.g. when using the module multiple times on the same AWS account
   name   = "langfuse"
+
+  # Optional: Configure Langfuse
+  use_encryption_key = true # Enable encryption for sensitive data stored in Langfuse
 
   # Optional: Configure the VPC
   vpc_cidr = "10.0.0.0/16"
