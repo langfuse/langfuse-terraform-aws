@@ -129,6 +129,7 @@ resource "helm_release" "langfuse" {
   values = [
     local.langfuse_values,
     local.ingress_values,
+    local.encryption_values,
   ]
 
   depends_on = [

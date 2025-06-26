@@ -1,7 +1,7 @@
 module "langfuse" {
   source = "../.."
 
-  domain = "langfuse.example.com"
+  domain = "test-deploy.infra.langfuse.com"
 
   # Optional use a different name for your installation
   # e.g. when using the module multiple times on the same AWS account
