@@ -45,6 +45,12 @@ variable "postgres_max_capacity" {
   default     = 2.0 # Higher default for production readiness
 }
 
+variable "postgres_version" {
+  description = "PostgreSQL engine version to use"
+  type = string
+  default = "15.5"
+}
+
 variable "cache_node_type" {
   description = "ElastiCache node type"
   type        = string
