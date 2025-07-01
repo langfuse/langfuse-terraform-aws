@@ -14,7 +14,7 @@ This module aims to provide a production-ready, secure, and scalable deployment 
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.2.6"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.3.0"
 
   domain = "langfuse.example.com"
 
@@ -120,6 +120,36 @@ Navigate to your domain, e.g. langfuse.example.com, to access the Langfuse UI.
 
 > :information_source: For more information on Langfuse's architecture, please check [the official documentation](https://langfuse.com/self-hosting#architecture)
 
+## Resource Configuration
+
+This module provides configurable resource allocation for all container workloads to ensure optimal performance in production environments. On AWS EKS Fargate, resource requests and limits are set to the same value for each container.
+The default values are based on the recommendations from the [Langfuse K8s documentation](https://github.com/langfuse/langfuse-k8s) and [Bitnami ClickHouse chart documentation](https://github.com/bitnami/charts/tree/main/bitnami/clickhouse).
+
+### Default Resource Allocations
+
+- **Langfuse containers** (web and worker): 2 CPU, 4 GiB memory
+- **ClickHouse containers**: 2 CPU, 8 GiB memory
+- **ClickHouse Keeper containers**: 1 CPU, 2 GiB memory
+
+These defaults provide a good starting point for production workloads, but you can adjust them based on your specific requirements by setting the corresponding variables in your Terraform configuration.
+
+### Customizing Resources
+
+You can override any of the resource configurations by setting the appropriate variables.
+For example, to increase ClickHouse Keeper resources:
+
+```hcl
+module "langfuse" {
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.2.6"
+
+  domain = "langfuse.example.com"
+
+  # Increase ClickHouse Keeper resources
+  clickhouse_keeper_cpu    = "2"
+  clickhouse_keeper_memory = "4Gi"
+}
+```
+
 ## Features
 
 This module creates a complete Langfuse stack with the following components:
@@ -188,6 +218,12 @@ This module creates a complete Langfuse stack with the following components:
 | cache_node_type            | ElastiCache node type                                                                          | string       | "cache.t4g.small"                      |    no    |
 | cache_instance_count       | Number of ElastiCache instances                                                                | number       | 1                                      |    no    |
 | langfuse_helm_chart_version | Version of the Langfuse Helm chart to deploy                                                  | string       | "1.2.15"                                |    no    |
+| langfuse_cpu               | CPU allocation for Langfuse containers                                                        | string       | "2"                                    |    no    |
+| langfuse_memory            | Memory allocation for Langfuse containers                                                     | string       | "4Gi"                                  |    no    |
+| clickhouse_cpu             | CPU allocation for ClickHouse containers                                                      | string       | "2"                                    |    no    |
+| clickhouse_memory          | Memory allocation for ClickHouse containers                                                   | string       | "8Gi"                                  |    no    |
+| clickhouse_keeper_cpu      | CPU allocation for ClickHouse Keeper containers                                               | string       | "1"                                    |    no    |
+| clickhouse_keeper_memory   | Memory allocation for ClickHouse Keeper containers                                            | string       | "2Gi"                                  |    no    |
 
 ## Outputs
 

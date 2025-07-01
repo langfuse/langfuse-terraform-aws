@@ -16,6 +16,14 @@ langfuse:
   serviceAccount:
     annotations:
       eks.amazonaws.com/role-arn: ${aws_iam_role.langfuse_irsa.arn}
+  # Resource configuration for production workloads
+  resources:
+    limits:
+      cpu: "${var.langfuse_cpu}"
+      memory: "${var.langfuse_memory}"
+    requests:
+      cpu: "${var.langfuse_cpu}"
+      memory: "${var.langfuse_memory}"
   # The Web container needs slightly increased initial grace period on Fargate
   web:
     livenessProbe:
@@ -35,6 +43,23 @@ clickhouse:
   auth:
     existingSecret: langfuse
     existingSecretKey: clickhouse-password
+  # Resource configuration for ClickHouse containers
+  resources:
+    limits:
+      cpu: "${var.clickhouse_cpu}"
+      memory: "${var.clickhouse_memory}"
+    requests:
+      cpu: "${var.clickhouse_cpu}"
+      memory: "${var.clickhouse_memory}"
+  # Resource configuration for ClickHouse Keeper
+  zookeeper:
+    resources:
+      limits:
+        cpu: "${var.clickhouse_keeper_cpu}"
+        memory: "${var.clickhouse_keeper_memory}"
+      requests:
+        cpu: "${var.clickhouse_keeper_cpu}"
+        memory: "${var.clickhouse_keeper_memory}"
 redis:
   deploy: false
   host: ${aws_elasticache_replication_group.redis.primary_endpoint_address}

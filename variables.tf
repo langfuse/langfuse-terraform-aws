@@ -90,3 +90,40 @@ variable "langfuse_helm_chart_version" {
   type        = string
   default     = "1.2.15"
 }
+
+# Resource configuration variables
+variable "langfuse_cpu" {
+  description = "CPU allocation for Langfuse containers"
+  type        = string
+  default     = "2"
+}
+
+variable "langfuse_memory" {
+  description = "Memory allocation for Langfuse containers"
+  type        = string
+  default     = "4Gi"
+}
+
+variable "clickhouse_cpu" {
+  description = "CPU allocation for ClickHouse containers"
+  type        = string
+  default     = "2"
+}
+
+variable "clickhouse_memory" {
+  description = "Memory allocation for ClickHouse containers"
+  type        = string
+  default     = "8Gi"
+}
+
+variable "clickhouse_keeper_cpu" {
+  description = "CPU allocation for ClickHouse Keeper containers"
+  type        = string
+  default     = "1"
+}
+
+variable "clickhouse_keeper_memory" {
+  description = "Memory allocation for ClickHouse Keeper containers"
+  type        = string
+  default     = "2Gi"
+}
