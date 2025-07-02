@@ -1,5 +1,6 @@
 locals {
-  langfuse_values = <<EOT
+  inbound_cidrs_csv = join(",", var.ingress_inbound_cidrs)
+  langfuse_values   = <<EOT
 global:
   defaultStorageClass: efs
 langfuse:
@@ -80,16 +81,17 @@ s3:
   mediaUpload:
     prefix: "media/"
 EOT
-  ingress_values  = <<EOT
+  ingress_values    = <<EOT
 langfuse:
   ingress:
     enabled: true
     className: alb
     annotations:
-      alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+      alb.ingress.kubernetes.io/scheme: ${var.alb_scheme}
+      alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/inbound-cidrs: ${local.inbound_cidrs_csv}
     hosts:
     - host: ${var.domain}
       paths:

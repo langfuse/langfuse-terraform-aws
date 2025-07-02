@@ -224,6 +224,8 @@ This module creates a complete Langfuse stack with the following components:
 | clickhouse_memory          | Memory allocation for ClickHouse containers                                                   | string       | "8Gi"                                  |    no    |
 | clickhouse_keeper_cpu      | CPU allocation for ClickHouse Keeper containers                                               | string       | "1"                                    |    no    |
 | clickhouse_keeper_memory   | Memory allocation for ClickHouse Keeper containers                                            | string       | "2Gi"                                  |    no    |
+| alb_scheme                 | ALB scheme                                                                                    | string       | "internet-facing"                      |    no    |
+| ingress_inbound_cidrs      | Allowed CIDR blocks for ingress alb                                                           | list(string) | ["0.0.0.0/0"]                          |    no    |
 
 ## Outputs
 

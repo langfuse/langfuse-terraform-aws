@@ -127,3 +127,15 @@ variable "clickhouse_keeper_memory" {
   type        = string
   default     = "2Gi"
 }
+
+variable "alb_scheme" {
+  description = "Scheme for the ALB (internal or internet-facing)"
+  type        = string
+  default     = "internet-facing"
+}
+
+variable "ingress_inbound_cidrs" {
+  description = "List of CIDR blocks allowed to access the ingress"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
