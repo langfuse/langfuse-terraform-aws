@@ -49,3 +49,13 @@ output "certificate_arn" {
   description = "ARN of the ACM certificate being used"
   value       = local.certificate_arn
 }
+
+output "load_balancer_dns_name" {
+  description = "DNS name of the ALB created by the ingress controller"
+  value       = data.aws_lb.ingress.dns_name
+}
+
+output "load_balancer_zone_id" {
+  description = "Zone ID of the ALB created by the ingress controller"
+  value       = data.aws_lb.ingress.zone_id
+}

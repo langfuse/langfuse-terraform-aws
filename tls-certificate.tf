@@ -48,12 +48,6 @@ resource "aws_acm_certificate_validation" "cert" {
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
-# Data source to get existing certificate (when provided)
-data "aws_acm_certificate" "existing" {
-  count = var.existing_certificate_arn != null ? 1 : 0
-  arn   = var.existing_certificate_arn
-}
-
 # Local value to reference the correct certificate ARN
 locals {
   certificate_arn = var.existing_certificate_arn != null ? var.existing_certificate_arn : aws_acm_certificate_validation.cert[0].certificate_arn
