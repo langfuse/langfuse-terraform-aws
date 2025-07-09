@@ -21,8 +21,8 @@ output "cluster_token" {
 }
 
 output "route53_nameservers" {
-  description = "Nameserver for the Route53 zone"
-  value       = aws_route53_zone.zone.name_servers
+  description = "Nameserver for the Route53 zone (only when zone is created)"
+  value       = var.existing_certificate_arn == null ? aws_route53_zone.zone[0].name_servers : null
 }
 
 output "private_subnet_ids" {
@@ -43,4 +43,9 @@ output "bucket_name" {
 output "bucket_id" {
   description = "ID of the S3 bucket for Langfuse"
   value       = aws_s3_bucket.langfuse.id
+}
+
+output "certificate_arn" {
+  description = "ARN of the ACM certificate being used"
+  value       = local.certificate_arn
 }

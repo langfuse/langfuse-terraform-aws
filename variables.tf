@@ -151,3 +151,9 @@ variable "redis_multi_az" {
   type        = bool
   default     = false
 }
+
+variable "existing_certificate_arn" {
+  description = "ARN of existing ACM certificate to use instead of creating a new one"
+  type        = string
+  default     = null
+}
