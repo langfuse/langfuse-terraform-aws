@@ -22,6 +22,10 @@ module "langfuse" {
   # e.g. when using the module multiple times on the same AWS account
   name   = "langfuse"
 
+  # Optional: Use existing ACM certificate instead of creating a new one
+  # This resolves DNS validation chicken-and-egg problems
+  # existing_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234-..."
+
   # Optional: Configure Langfuse
   use_encryption_key = true # Enable encryption for sensitive data stored in Langfuse
 
@@ -75,7 +79,20 @@ provider "helm" {
 
 You can also navigate into the `examples/quickstart` directory and run the example there.
 
-2. Apply the DNS zone
+### Option A: Using an existing ACM certificate (recommended)
+
+If you already have an ACM certificate for your domain (e.g., a wildcard certificate), you can use it directly:
+
+2. Set `existing_certificate_arn` in your module configuration and apply:
+
+```bash
+terraform init
+terraform apply
+```
+
+### Option B: Creating a new certificate and Route53 zone
+
+2. Apply the DNS zone first:
 
 ```bash
 terraform init
@@ -207,6 +224,7 @@ This module creates a complete Langfuse stack with the following components:
 | -------------------------- | ---------------------------------------------------------------------------------------------- | ------------ | -------------------------------------- | :------: |
 | name                       | Name prefix for resources                                                                      | string       | "langfuse"                             |    no    |
 | domain                     | Domain name used for resource naming                                                           | string       | n/a                                    |   yes    |
+| existing_certificate_arn   | ARN of existing ACM certificate to use instead of creating a new one                          | string       | null                                   |    no    |
 | vpc_cidr                   | CIDR block for VPC                                                                             | string       | "10.0.0.0/16"                          |    no    |
 | use_single_nat_gateway     | To use a single NAT Gateway (cheaper) or one per AZ (more resilient)                           | bool         | true                                   |    no    |
 | kubernetes_version         | Kubernetes version for EKS cluster                                                             | string       | "1.32"                                 |    no    |
@@ -231,17 +249,20 @@ This module creates a complete Langfuse stack with the following components:
 
 ## Outputs
 
-| Name                   | Description                      |
-| ---------------------- | -------------------------------- |
-| cluster_name           | EKS Cluster Name                 |
-| cluster_host           | EKS Cluster endpoint             |
-| cluster_ca_certificate | EKS Cluster CA certificate       |
-| cluster_token          | EKS Cluster authentication token |
-| private_subnet_ids     | Private subnet IDs from VPC      |
-| public_subnet_ids      | Public subnet IDs from VPC       |
-| bucket_name            | S3 bucket name for Langfuse      |
-| bucket_id              | S3 bucket ID for Langfuse        |
-| route53_nameservers    | Route53 zone nameservers         |
+| Name                   | Description                                            |
+| ---------------------- | ------------------------------------------------------ |
+| cluster_name           | EKS Cluster Name                                       |
+| cluster_host           | EKS Cluster endpoint                                   |
+| cluster_ca_certificate | EKS Cluster CA certificate                             |
+| cluster_token          | EKS Cluster authentication token                       |
+| private_subnet_ids     | Private subnet IDs from VPC                            |
+| public_subnet_ids      | Public subnet IDs from VPC                             |
+| bucket_name            | S3 bucket name for Langfuse                            |
+| bucket_id              | S3 bucket ID for Langfuse                              |
+| route53_nameservers    | Route53 zone nameservers (only when zone is created)  |
+| certificate_arn        | ARN of the ACM certificate being used                  |
+| load_balancer_dns_name | DNS name of the ALB created by the ingress controller  |
+| load_balancer_zone_id  | Zone ID of the ALB created by the ingress controller   |
 
 ## Support
 
