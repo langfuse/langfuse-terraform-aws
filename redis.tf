@@ -1,13 +1,13 @@
 resource "aws_security_group" "redis" {
   name        = "${var.name}-redis"
   description = "Security group for Langfuse Redis"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = data.aws_vpc.existing.id
 
   ingress {
     from_port   = 6379
     to_port     = 6379
     protocol    = "tcp"
-    cidr_blocks = [module.vpc.vpc_cidr_block]
+    cidr_blocks = [data.aws_vpc.existing.cidr_block]
   }
 
   egress {
@@ -39,7 +39,7 @@ resource "aws_cloudwatch_log_group" "redis" {
 
 resource "aws_elasticache_subnet_group" "redis" {
   name       = "${var.name}-redis-subnet-group"
-  subnet_ids = module.vpc.private_subnets
+  subnet_ids = aws_subnet.private[*].id
 }
 
 # Random password for Redis

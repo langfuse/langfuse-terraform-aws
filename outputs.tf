@@ -27,12 +27,12 @@ output "route53_nameservers" {
 
 output "private_subnet_ids" {
   description = "Private subnet IDs from the VPC module"
-  value       = module.vpc.private_subnets
+  value       = aws_subnet.private[*].id
 }
 
 output "public_subnet_ids" {
   description = "Public subnet IDs from the VPC module"
-  value       = module.vpc.public_subnets
+  value       = aws_subnet.public[*].id
 }
 
 output "bucket_name" {

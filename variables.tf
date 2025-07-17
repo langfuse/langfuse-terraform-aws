@@ -151,3 +151,9 @@ variable "redis_multi_az" {
   type        = bool
   default     = false
 }
+
+variable "vpc_id" {
+  description = "ID of the existing VPC to use"
+  type        = string
+  default     = ""
+}

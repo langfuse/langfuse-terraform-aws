@@ -1,17 +1,18 @@
 module "langfuse" {
   source = "../.."
 
-  domain = "langfuse.example.com"
+  domain = "langfuse-test.wisepipe.com"
 
   # Optional use a different name for your installation
   # e.g. when using the module multiple times on the same AWS account
-  name = "langfuse"
+  name = "langfuse-test"
 
   # Optional: Configure Langfuse
   use_encryption_key = true # Enable encryption for sensitive data stored in Langfuse
 
   # Optional: Configure the VPC
-  vpc_cidr               = "10.0.0.0/16"
+  # vpc_cidr               = "10.0.0.0/16"
+  vpc_id                = "vpc-0a3e0e806bc1768ef" # Use
   use_single_nat_gateway = false # Using a single NAT gateway decreases costs, but is less resilient
 
   # Optional: Configure the Kubernetes cluster
@@ -55,4 +56,8 @@ provider "helm" {
       args        = ["eks", "get-token", "--cluster-name", module.langfuse.cluster_name]
     }
   }
+}
+
+provider "aws" {
+  region = "us-east-1" # Change to your preferred AWS region
 }
