@@ -81,6 +81,31 @@ s3:
   mediaUpload:
     prefix: "media/"
 EOT
+
+  additional_env_values = length(var.additional_env) == 0 ? "" : <<EOT
+langfuse:
+  additionalEnv:
+%{for env in var.additional_env~}
+    - name: ${env.name}
+%{if env.value != null~}
+      value: "${env.value}"
+%{endif~}
+%{if env.valueFrom != null~}
+      valueFrom:
+%{if env.valueFrom.secretKeyRef != null~}
+        secretKeyRef:
+          name: ${env.valueFrom.secretKeyRef.name}
+          key: ${env.valueFrom.secretKeyRef.key}
+%{endif~}
+%{if env.valueFrom.configMapKeyRef != null~}
+        configMapKeyRef:
+          name: ${env.valueFrom.configMapKeyRef.name}
+          key: ${env.valueFrom.configMapKeyRef.key}
+%{endif~}
+%{endif~}
+%{endfor~}
+EOT
+
   ingress_values    = <<EOT
 langfuse:
   ingress:
@@ -153,11 +178,12 @@ resource "helm_release" "langfuse" {
   namespace        = "langfuse"
   create_namespace = true
 
-  values = [
+  values = compact([
     local.langfuse_values,
     local.ingress_values,
     local.encryption_values,
-  ]
+    local.additional_env_values,
+  ])
 
   depends_on = [
     aws_iam_role.langfuse_irsa,

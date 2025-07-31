@@ -44,6 +44,25 @@ module "langfuse" {
 
   # Optional: Configure Langfuse Helm chart version
   langfuse_helm_chart_version = "1.2.15"
+
+  # Optional: Add additional environment variables
+  additional_env = [
+    # Direct value
+    {
+      name  = "CUSTOM_ENV_VAR"
+      value = "custom-value"
+    },
+    # Reference to Kubernetes secret
+    {
+      name = "DATABASE_PASSWORD"
+      valueFrom = {
+        secretKeyRef = {
+          name = "my-database-secret"
+          key  = "password"
+        }
+      }
+    }
+  ]
 }
 
 provider "kubernetes" {
