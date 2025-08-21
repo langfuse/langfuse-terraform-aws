@@ -24,7 +24,7 @@ variable "kubernetes_version" {
 variable "use_encryption_key" {
   description = "Wheter or not to use an Encryption key for LLM API credential and integration credential store"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "postgres_instance_count" {

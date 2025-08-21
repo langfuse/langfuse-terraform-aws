@@ -23,7 +23,7 @@ module "langfuse" {
   name   = "langfuse"
 
   # Optional: Configure Langfuse
-  use_encryption_key = true # Enable encryption for sensitive data stored in Langfuse
+  # use_encryption_key = false # Disable encryption (default is true for security)
 
   # Optional: Configure the VPC
   vpc_cidr = "10.0.0.0/16"
@@ -229,7 +229,7 @@ This module creates a complete Langfuse stack with the following components:
 | vpc_cidr                   | CIDR block for VPC                                                                             | string       | "10.0.0.0/16"                          |    no    |
 | use_single_nat_gateway     | To use a single NAT Gateway (cheaper) or one per AZ (more resilient)                           | bool         | true                                   |    no    |
 | kubernetes_version         | Kubernetes version for EKS cluster                                                             | string       | "1.32"                                 |    no    |
-| use_encryption_key         | Wheter or not to use an Encryption key for LLM API credential and integration credential store | bool         | false                                  |    no    |
+| use_encryption_key         | Wheter or not to use an Encryption key for LLM API credential and integration credential store | bool         | true                                   |    no    |
 | fargate_profile_namespaces | List of namespaces to create Fargate profiles for                                              | list(string) | ["default", "langfuse", "kube-system"] |    no    |
 | postgres_instance_count    | Number of PostgreSQL instances                                                                 | number       | 2                                      |    no    |
 | postgres_min_capacity      | Minimum ACU capacity for PostgreSQL Serverless v2                                              | number       | 0.5                                    |    no    |
