@@ -23,7 +23,7 @@ module "langfuse" {
   name   = "langfuse"
 
   # Optional: Configure Langfuse
-  use_encryption_key = true # Enable encryption for sensitive data stored in Langfuse
+  # use_encryption_key = false # Disable encryption (default is true for security)
 
   # Optional: Configure the VPC
   vpc_cidr = "10.0.0.0/16"
@@ -232,7 +232,7 @@ This module creates a complete Langfuse stack with the following components:
 | vpc_cidr                     | CIDR block for VPC                                                                                               | string       | "10.0.0.0/16"                          |    no    |
 | use_single_nat_gateway       | To use a single NAT Gateway (cheaper) or one per AZ (more resilient)                                             | bool         | true                                   |    no    |
 | kubernetes_version           | Kubernetes version for EKS cluster                                                                               | string       | "1.32"                                 |    no    |
-| use_encryption_key           | Wheter or not to use an Encryption key for LLM API credential and integration credential store                   | bool         | false                                  |    no    |
+| use_encryption_key           | Whether to use an Encryption key for LLM API credential and integration credential store                         | bool         | true                                   |    no    |
 | fargate_profile_namespaces   | List of namespaces to create Fargate profiles for                                                                | list(string) | ["default", "langfuse", "kube-system"] |    no    |
 | postgres_instance_count      | Number of PostgreSQL instances                                                                                   | number       | 2                                      |    no    |
 | postgres_min_capacity        | Minimum ACU capacity for PostgreSQL Serverless v2                                                                | number       | 0.5                                    |    no    |
@@ -242,6 +242,9 @@ This module creates a complete Langfuse stack with the following components:
 | langfuse_helm_chart_version  | Version of the Langfuse Helm chart to deploy                                                                     | string       | "1.4.1"                                |    no    |
 | langfuse_cpu                 | CPU allocation for Langfuse containers                                                                           | string       | "2"                                    |    no    |
 | langfuse_memory              | Memory allocation for Langfuse containers                                                                        | string       | "4Gi"                                  |    no    |
+| langfuse_web_replicas        | Number of replicas for Langfuse web container                                                                    | number       | 1                                      |    no    |
+| langfuse_worker_replicas     | Number of replicas for Langfuse worker container                                                                 | number       | 1                                      |    no    |
+| clickhouse_replicas          | Number of replicas of ClickHouse containers                                                                      | number       | 3                                      |    no    |
 | clickhouse_cpu               | CPU allocation for ClickHouse containers                                                                         | string       | "2"                                    |    no    |
 | clickhouse_memory            | Memory allocation for ClickHouse containers                                                                      | string       | "8Gi"                                  |    no    |
 | clickhouse_keeper_cpu        | CPU allocation for ClickHouse Keeper containers                                                                  | string       | "1"                                    |    no    |
