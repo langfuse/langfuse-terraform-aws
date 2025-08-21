@@ -137,7 +137,6 @@ EOT
   # <part_log remove="1"/>
   # <query_views_log remove="1"/>
   # <asynchronous_insert_log remove="1"/>
-  # <latency_log remove="1"/>
   # <query_metric_log remove="1"/>
   # <error_log remove="1"/>
   clickhouse_overwrite_values = var.enable_clickhouse_log_tables ? "" : <<EOT
@@ -149,6 +148,7 @@ clickhouse:
         <opentelemetry_span_log remove="1"/>
         <asynchronous_metric_log remove="1"/>
         <metric_log remove="1"/>
+        <latency_log remove="1"/>
       </clickhouse>
 EOT
 }
