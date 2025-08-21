@@ -22,9 +22,15 @@ variable "kubernetes_version" {
 }
 
 variable "use_encryption_key" {
-  description = "Wheter or not to use an Encryption key for LLM API credential and integration credential store"
+  description = "Whether to use an Encryption key for LLM API credential and integration credential store"
   type        = bool
   default     = false
+}
+
+variable "enable_clickhouse_log_tables" {
+  description = "Whether to enable Clickhouse logging tables. Having them active produces a high base-load on the EFS filesystem."
+  type = bool
+  default = false
 }
 
 variable "postgres_instance_count" {

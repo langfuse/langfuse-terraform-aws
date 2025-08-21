@@ -130,6 +130,27 @@ langfuse:
       name: ${kubernetes_secret.langfuse.metadata[0].name}
       key: encryption_key
 EOT
+
+  # We could also consider excluding the following tables on opt-out:
+  # <query_log remove="1"/>
+  # <processors_profile_log remove="1"/>
+  # <part_log remove="1"/>
+  # <query_views_log remove="1"/>
+  # <asynchronous_insert_log remove="1"/>
+  # <latency_log remove="1"/>
+  # <query_metric_log remove="1"/>
+  # <error_log remove="1"/>
+  clickhouse_overwrite_values = var.enable_clickhouse_log_tables ? "" : <<EOT
+clickhouse:
+  extraOverrides: |
+      <clickhouse>
+        <trace_log remove="1"/>
+        <text_log remove="1"/>
+        <opentelemetry_span_log remove="1"/>
+        <asynchronous_metric_log remove="1"/>
+        <metric_log remove="1"/>
+      </clickhouse>
+EOT
 }
 
 resource "kubernetes_namespace" "langfuse" {
@@ -183,6 +204,7 @@ resource "helm_release" "langfuse" {
     local.ingress_values,
     local.encryption_values,
     local.additional_env_values,
+    local.clickhouse_overwrite_values,
   ])
 
   depends_on = [
