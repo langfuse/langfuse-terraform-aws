@@ -27,10 +27,13 @@ langfuse:
       memory: "${var.langfuse_memory}"
   # The Web container needs slightly increased initial grace period on Fargate
   web:
+    replicas: ${var.langfuse_web_replicas}
     livenessProbe:
       initialDelaySeconds: 60
     readinessProbe:
       initialDelaySeconds: 60
+  worker:
+    replicas: ${var.langfuse_worker_replicas}
 postgresql:
   deploy: false
   host: ${aws_rds_cluster.postgres.endpoint}:5432
@@ -44,6 +47,7 @@ clickhouse:
   auth:
     existingSecret: langfuse
     existingSecretKey: clickhouse-password
+  replicaCount: ${var.clickhouse_replicas}
   # Resource configuration for ClickHouse containers
   resources:
     limits:
@@ -54,6 +58,7 @@ clickhouse:
       memory: "${var.clickhouse_memory}"
   # Resource configuration for ClickHouse Keeper
   zookeeper:
+    replicaCount: ${var.clickhouse_replicas}
     resources:
       limits:
         cpu: "${var.clickhouse_keeper_cpu}"

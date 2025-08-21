@@ -104,6 +104,36 @@ variable "langfuse_memory" {
   default     = "4Gi"
 }
 
+variable "langfuse_web_replicas" {
+  description = "Number of replicas for Langfuse web container"
+  type = number
+  default = 1
+  validation {
+    condition = var.langfuse_web_replicas > 0
+    error_message = "There must be at least one Langfuse web replica."
+  }
+}
+
+variable "langfuse_worker_replicas" {
+  description = "Number of replicas for Langfuse worker container"
+  type = number
+  default = 1
+  validation {
+    condition = var.langfuse_worker_replicas > 0
+    error_message = "There must be at least one Langfuse worker replica."
+  }
+}
+
+variable "clickhouse_replicas" {
+  description = "Number of replicas of ClickHouse containers"
+  type        = number
+  default     = 3
+  validation {
+    condition = var.clickhouse_replicas > 1
+    error_message = "There must be at least two clickhouse replicas for high availability."
+  }
+}
+
 variable "clickhouse_cpu" {
   description = "CPU allocation for ClickHouse containers"
   type        = string

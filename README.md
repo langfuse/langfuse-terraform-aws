@@ -222,31 +222,34 @@ This module creates a complete Langfuse stack with the following components:
 
 ## Inputs
 
-| Name                       | Description                                                                                    | Type         | Default                                | Required |
-| -------------------------- | ---------------------------------------------------------------------------------------------- | ------------ |----------------------------------------| :------: |
-| name                       | Name prefix for resources                                                                      | string       | "langfuse"                             |    no    |
-| domain                     | Domain name used for resource naming                                                           | string       | n/a                                    |   yes    |
-| vpc_cidr                   | CIDR block for VPC                                                                             | string       | "10.0.0.0/16"                          |    no    |
-| use_single_nat_gateway     | To use a single NAT Gateway (cheaper) or one per AZ (more resilient)                           | bool         | true                                   |    no    |
-| kubernetes_version         | Kubernetes version for EKS cluster                                                             | string       | "1.32"                                 |    no    |
-| use_encryption_key         | Wheter or not to use an Encryption key for LLM API credential and integration credential store | bool         | false                                  |    no    |
-| fargate_profile_namespaces | List of namespaces to create Fargate profiles for                                              | list(string) | ["default", "langfuse", "kube-system"] |    no    |
-| postgres_instance_count    | Number of PostgreSQL instances                                                                 | number       | 2                                      |    no    |
-| postgres_min_capacity      | Minimum ACU capacity for PostgreSQL Serverless v2                                              | number       | 0.5                                    |    no    |
-| postgres_max_capacity      | Maximum ACU capacity for PostgreSQL Serverless v2                                              | number       | 2.0                                    |    no    |
-| cache_node_type            | ElastiCache node type                                                                          | string       | "cache.t4g.small"                      |    no    |
-| cache_instance_count       | Number of ElastiCache instances                                                                | number       | 1                                      |    no    |
-| langfuse_helm_chart_version | Version of the Langfuse Helm chart to deploy                                                  | string       | "1.4.1"                                |    no    |
-| langfuse_cpu               | CPU allocation for Langfuse containers                                                        | string       | "2"                                    |    no    |
-| langfuse_memory            | Memory allocation for Langfuse containers                                                     | string       | "4Gi"                                  |    no    |
-| clickhouse_cpu             | CPU allocation for ClickHouse containers                                                      | string       | "2"                                    |    no    |
-| clickhouse_memory          | Memory allocation for ClickHouse containers                                                   | string       | "8Gi"                                  |    no    |
-| clickhouse_keeper_cpu      | CPU allocation for ClickHouse Keeper containers                                               | string       | "1"                                    |    no    |
-| clickhouse_keeper_memory   | Memory allocation for ClickHouse Keeper containers                                            | string       | "2Gi"                                  |    no    |
-| alb_scheme                 | ALB scheme                                                                                    | string       | "internet-facing"                      |    no    |
-| ingress_inbound_cidrs      | Allowed CIDR blocks for ingress alb                                                           | list(string) | ["0.0.0.0/0"]                          |    no    |
-| redis_at_rest_encryption   | At rest encryption enabled for the redis cluster                                              | bool         | false                                  |    no    |
-| redis_multi_az             | Multi availability zone enabled for the redis cluster                                         | bool         | false                                  |    no    |
+| Name                        | Description                                                                                    | Type         | Default                                | Required |
+|-----------------------------|------------------------------------------------------------------------------------------------|--------------|----------------------------------------|:--------:|
+| name                        | Name prefix for resources                                                                      | string       | "langfuse"                             |    no    |
+| domain                      | Domain name used for resource naming                                                           | string       | n/a                                    |   yes    |
+| vpc_cidr                    | CIDR block for VPC                                                                             | string       | "10.0.0.0/16"                          |    no    |
+| use_single_nat_gateway      | To use a single NAT Gateway (cheaper) or one per AZ (more resilient)                           | bool         | true                                   |    no    |
+| kubernetes_version          | Kubernetes version for EKS cluster                                                             | string       | "1.32"                                 |    no    |
+| use_encryption_key          | Wheter or not to use an Encryption key for LLM API credential and integration credential store | bool         | false                                  |    no    |
+| fargate_profile_namespaces  | List of namespaces to create Fargate profiles for                                              | list(string) | ["default", "langfuse", "kube-system"] |    no    |
+| postgres_instance_count     | Number of PostgreSQL instances                                                                 | number       | 2                                      |    no    |
+| postgres_min_capacity       | Minimum ACU capacity for PostgreSQL Serverless v2                                              | number       | 0.5                                    |    no    |
+| postgres_max_capacity       | Maximum ACU capacity for PostgreSQL Serverless v2                                              | number       | 2.0                                    |    no    |
+| cache_node_type             | ElastiCache node type                                                                          | string       | "cache.t4g.small"                      |    no    |
+| cache_instance_count        | Number of ElastiCache instances                                                                | number       | 1                                      |    no    |
+| langfuse_helm_chart_version | Version of the Langfuse Helm chart to deploy                                                   | string       | "1.4.1"                                |    no    |
+| langfuse_cpu                | CPU allocation for Langfuse containers                                                         | string       | "2"                                    |    no    |
+| langfuse_memory             | Memory allocation for Langfuse containers                                                      | string       | "4Gi"                                  |    no    |
+| langfuse_web_replicas       | Number of replicas for Langfuse web container                                                  | number       | 1                                      |    no    |
+| langfuse_worker_replicas    | Number of replicas for Langfuse worker container                                               | number       | 1                                      |    no    |
+| clickhouse_replicas         | Number of replicas of ClickHouse containers                                                    | number       | 3                                      |    no    |
+| clickhouse_cpu              | CPU allocation for ClickHouse containers                                                       | string       | "2"                                    |    no    |
+| clickhouse_memory           | Memory allocation for ClickHouse containers                                                    | string       | "8Gi"                                  |    no    |
+| clickhouse_keeper_cpu       | CPU allocation for ClickHouse Keeper containers                                                | string       | "1"                                    |    no    |
+| clickhouse_keeper_memory    | Memory allocation for ClickHouse Keeper containers                                             | string       | "2Gi"                                  |    no    |
+| alb_scheme                  | ALB scheme                                                                                     | string       | "internet-facing"                      |    no    |
+| ingress_inbound_cidrs       | Allowed CIDR blocks for ingress alb                                                            | list(string) | ["0.0.0.0/0"]                          |    no    |
+| redis_at_rest_encryption    | At rest encryption enabled for the redis cluster                                               | bool         | false                                  |    no    |
+| redis_multi_az              | Multi availability zone enabled for the redis cluster                                          | bool         | false                                  |    no    |
 
 ## Outputs
 
