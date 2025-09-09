@@ -156,6 +156,15 @@ clickhouse:
         <latency_log remove="1"/>
       </clickhouse>
 EOT
+
+  celdon_overwrite_values = <<EOT
+langfuse:
+  features:
+    telemetryEnabled: false
+EOT
+
+
+
 }
 
 resource "kubernetes_namespace" "langfuse" {
@@ -210,6 +219,7 @@ resource "helm_release" "langfuse" {
     local.encryption_values,
     local.additional_env_values,
     local.clickhouse_overwrite_values,
+    local.celdon_overwrite_values,
   ])
 
   depends_on = [
