@@ -9,10 +9,24 @@ variable "domain" {
   type        = string
 }
 
-variable "vpc_cidr" {
+variable "vpc_id" {
+  description = "VPC ID where resources will be deployed"
+  type        = string
+}
+
+variable "vpc_cidr_block" {
   description = "CIDR block for VPC"
   type        = string
   default     = "10.0.0.0/16"
+}
+
+variable "public_subnets" {
+  description = "List of public subnet IDs"
+  type        = list(string)
+}
+variable "private_subnets" {
+  description = "List of private subnet IDs"
+  type        = list(string)
 }
 
 variable "kubernetes_version" {
