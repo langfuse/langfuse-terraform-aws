@@ -22,6 +22,7 @@ module "langfuse" {
   fargate_profile_namespaces = ["kube-system", "langfuse", "default"]
 
   # Optional: Configure the database instances
+  postgres_instance_class = "db.t3.large"
   postgres_instance_count = 2
   postgres_min_capacity   = 0.5
   postgres_max_capacity   = 2.0

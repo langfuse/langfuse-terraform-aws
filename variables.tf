@@ -71,6 +71,12 @@ variable "postgres_version" {
   default     = "15.5"
 }
 
+variable "postgres_instance_class" {
+  description = "Instance class for PostgreSQL instances"
+  type        = string
+  default     = "db.serverless"
+}
+
 variable "cache_node_type" {
   description = "ElastiCache node type"
   type        = string

@@ -78,7 +78,7 @@ resource "aws_rds_cluster_instance" "postgres" {
   count              = var.postgres_instance_count
   identifier         = "${var.name}-postgres-${count.index + 1}"
   cluster_identifier = aws_rds_cluster.postgres.id
-  instance_class     = "db.serverless"
+  instance_class     = var.postgres_instance_class
   engine             = aws_rds_cluster.postgres.engine
   engine_version     = aws_rds_cluster.postgres.engine_version
 
