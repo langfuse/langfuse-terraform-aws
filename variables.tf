@@ -15,6 +15,45 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "vpc_id" {
+  description = "ID of an existing VPC to reuse"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.vpc_id == null || can(regex("^vpc-", var.vpc_id))
+    error_message = "VPC ID must start with 'vpc-' if provided."
+  }
+}
+
+variable "private_subnet_ids" {
+  description = "List of private subnet IDs (required when using existing VPC)"
+  type        = list(string)
+  default     = null
+
+  validation {
+    condition     = var.vpc_id == null || (var.private_subnet_ids != null && length(var.private_subnet_ids) > 0)
+    error_message = "private_subnet_ids must be provided when using an existing VPC (vpc_id is set)."
+  }
+}
+
+variable "public_subnet_ids" {
+  description = "List of public subnet IDs (required when using existing VPC)"
+  type        = list(string)
+  default     = null
+
+  validation {
+    condition     = var.vpc_id == null || (var.public_subnet_ids != null && length(var.public_subnet_ids) > 0)
+    error_message = "public_subnet_ids must be provided when using an existing VPC (vpc_id is set)."
+  }
+}
+
+variable "private_route_table_ids" {
+  description = "List of private route table IDs (required when using existing VPC, for S3 VPC Gateway endpoint)"
+  type        = list(string)
+  default     = null
+}
+
 variable "kubernetes_version" {
   description = "Kubernetes version to use for the EKS cluster"
   type        = string
