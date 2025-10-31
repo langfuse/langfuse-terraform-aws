@@ -136,6 +136,61 @@ kubectl --namespace langfuse delete pod langfuse-clickhouse-shard0-{0,1,2} langf
 Afterward, your installation should become fully available.
 Navigate to your domain, e.g. langfuse.example.com, to access the Langfuse UI.
 
+### Using an Existing VPC
+
+If you already have a VPC and want to deploy Langfuse into it, you can provide the VPC ID and subnet IDs instead of having the module create a new VPC:
+
+```hcl
+module "langfuse" {
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.5.1"
+
+  domain = "langfuse.example.com"
+
+  # Use existing VPC
+  vpc_id             = "vpc-12345678"
+  private_subnet_ids = ["subnet-aaa11111", "subnet-bbb22222", "subnet-ccc33333"]
+  public_subnet_ids  = ["subnet-xxx11111", "subnet-yyy22222", "subnet-zzz33333"]
+
+  # Required: Provide route table IDs for S3 VPC Gateway endpoint
+  private_route_table_ids = ["rtb-11111111", "rtb-22222222"]
+}
+
+provider "kubernetes" {
+  host                   = module.langfuse.cluster_host
+  cluster_ca_certificate = module.langfuse.cluster_ca_certificate
+  token                  = module.langfuse.cluster_token
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.langfuse.cluster_name]
+  }
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = module.langfuse.cluster_host
+    cluster_ca_certificate = module.langfuse.cluster_ca_certificate
+    token                  = module.langfuse.cluster_token
+
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args        = ["eks", "get-token", "--cluster-name", module.langfuse.cluster_name]
+    }
+  }
+}
+```
+
+**Important Notes:**
+- The module will automatically tag your subnets with the required Kubernetes tags for the AWS Load Balancer Controller:
+  - Private subnets: `kubernetes.io/role/internal-elb=1` and `kubernetes.io/cluster/<name>=shared`
+  - Public subnets: `kubernetes.io/role/elb=1` and `kubernetes.io/cluster/<name>=shared`
+- Private subnet IDs and public subnet IDs are required when using an existing VPC
+- Private route table IDs are required when using an existing VPC (needed for S3 VPC Gateway endpoint)
+- Your existing VPC must have DNS hostnames and DNS support enabled
+- Subnets should be spread across multiple availability zones for high availability
+
 ## Architecture
 
 ![lanfuse-v3-on-aws](./images/langfuse-v3-on-aws.svg)
@@ -176,7 +231,7 @@ module "langfuse" {
 
 This module creates a complete Langfuse stack with the following components:
 
-- VPC with public and private subnets
+- VPC with public and private subnets (or use an existing VPC)
 - EKS cluster with Fargate compute
 - Aurora PostgreSQL Serverless v2 cluster
 - ElastiCache Redis cluster
@@ -230,6 +285,10 @@ This module creates a complete Langfuse stack with the following components:
 | name                         | Name prefix for resources                                                                                        | string       | "langfuse"                             |    no    |
 | domain                       | Domain name used for resource naming                                                                             | string       | n/a                                    |   yes    |
 | vpc_cidr                     | CIDR block for VPC                                                                                               | string       | "10.0.0.0/16"                          |    no    |
+| vpc_id                       | ID of an existing VPC to reuse                                                                                   | string       | null                                   |    no    |
+| private_subnet_ids           | List of private subnet IDs (required when using existing VPC)                                                    | list(string) | null                                   |    no    |
+| public_subnet_ids            | List of public subnet IDs (required when using existing VPC)                                                     | list(string) | null                                   |    no    |
+| private_route_table_ids      | List of private route table IDs (required when using existing VPC, for S3 VPC Gateway endpoint)                   | list(string) | null                                   |    no    |
 | use_single_nat_gateway       | To use a single NAT Gateway (cheaper) or one per AZ (more resilient)                                             | bool         | true                                   |    no    |
 | kubernetes_version           | Kubernetes version for EKS cluster                                                                               | string       | "1.32"                                 |    no    |
 | use_encryption_key           | Whether to use an Encryption key for LLM API credential and integration credential store                         | bool         | true                                   |    no    |
