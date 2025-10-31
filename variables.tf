@@ -52,6 +52,11 @@ variable "private_route_table_ids" {
   description = "List of private route table IDs (required when using existing VPC, for S3 VPC Gateway endpoint)"
   type        = list(string)
   default     = null
+
+  validation {
+    condition     = var.vpc_id == null || (var.public_subnet_ids != null && length(var.public_subnet_ids) > 0)
+    error_message = "private_route_table_ids must be provided when using an existing VPC (vpc_id is set)."
+  }
 }
 
 variable "kubernetes_version" {
