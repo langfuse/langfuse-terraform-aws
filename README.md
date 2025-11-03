@@ -151,7 +151,8 @@ module "langfuse" {
   private_subnet_ids = ["subnet-aaa11111", "subnet-bbb22222", "subnet-ccc33333"]
   public_subnet_ids  = ["subnet-xxx11111", "subnet-yyy22222", "subnet-zzz33333"]
 
-  # Required: Provide route table IDs for S3 VPC Gateway endpoint
+  # Optional: Provide route table IDs for S3 VPC Gateway endpoint
+  # If not provided, S3 endpoint will not be created
   private_route_table_ids = ["rtb-11111111", "rtb-22222222"]
 }
 
@@ -187,7 +188,7 @@ provider "helm" {
   - Private subnets: `kubernetes.io/role/internal-elb=1` and `kubernetes.io/cluster/<name>=shared`
   - Public subnets: `kubernetes.io/role/elb=1` and `kubernetes.io/cluster/<name>=shared`
 - Private subnet IDs and public subnet IDs are required when using an existing VPC
-- Private route table IDs are required when using an existing VPC (needed for S3 VPC Gateway endpoint)
+- Private route table IDs are optional - provide them if you want the module to create an S3 VPC Gateway endpoint
 - Your existing VPC must have DNS hostnames and DNS support enabled
 - Subnets should be spread across multiple availability zones for high availability
 
@@ -288,7 +289,7 @@ This module creates a complete Langfuse stack with the following components:
 | vpc_id                       | ID of an existing VPC to reuse                                                                                   | string       | null                                   |    no    |
 | private_subnet_ids           | List of private subnet IDs (required when using existing VPC)                                                    | list(string) | null                                   |    no    |
 | public_subnet_ids            | List of public subnet IDs (required when using existing VPC)                                                     | list(string) | null                                   |    no    |
-| private_route_table_ids      | List of private route table IDs (required when using existing VPC, for S3 VPC Gateway endpoint)                   | list(string) | null                                   |    no    |
+| private_route_table_ids      | List of private route table IDs (optional when using existing VPC, for S3 VPC Gateway endpoint)                   | list(string) | null                                   |    no    |
 | use_single_nat_gateway       | To use a single NAT Gateway (cheaper) or one per AZ (more resilient)                                             | bool         | true                                   |    no    |
 | kubernetes_version           | Kubernetes version for EKS cluster                                                                               | string       | "1.32"                                 |    no    |
 | use_encryption_key           | Whether to use an Encryption key for LLM API credential and integration credential store                         | bool         | true                                   |    no    |
