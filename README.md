@@ -14,7 +14,7 @@ This module aims to provide a production-ready, secure, and scalable deployment 
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.5.1"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.5.2"
 
   domain = "langfuse.example.com"
 
@@ -43,7 +43,7 @@ module "langfuse" {
   cache_instance_count = 2
 
   # Optional: Configure Langfuse Helm chart version
-  langfuse_helm_chart_version = "1.5.0"
+  langfuse_helm_chart_version = "1.5.9"
   
   # Optional: Activate additional log tables in ClickHouse. Will increase EFS costs, but may aid in debugging.
   enable_clickhouse_log_tables = false  # Set to true to have additional logs.
@@ -299,7 +299,7 @@ This module creates a complete Langfuse stack with the following components:
 | postgres_max_capacity        | Maximum ACU capacity for PostgreSQL Serverless v2                                                                | number       | 2.0                                    |    no    |
 | cache_node_type              | ElastiCache node type                                                                                            | string       | "cache.t4g.small"                      |    no    |
 | cache_instance_count         | Number of ElastiCache instances                                                                                  | number       | 1                                      |    no    |
-| langfuse_helm_chart_version  | Version of the Langfuse Helm chart to deploy                                                                     | string       | "1.5.0"                                |    no    |
+| langfuse_helm_chart_version  | Version of the Langfuse Helm chart to deploy                                                                     | string       | "1.5.9"                                |    no    |
 | langfuse_cpu                 | CPU allocation for Langfuse containers                                                                           | string       | "2"                                    |    no    |
 | langfuse_memory              | Memory allocation for Langfuse containers                                                                        | string       | "4Gi"                                  |    no    |
 | langfuse_web_replicas        | Number of replicas for Langfuse web container                                                                    | number       | 1                                      |    no    |
