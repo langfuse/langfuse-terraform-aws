@@ -32,7 +32,7 @@ variable "private_subnet_ids" {
   default     = null
 
   validation {
-    condition     = var.vpc_id == null || (var.private_subnet_ids != null && length(var.private_subnet_ids) > 0)
+    condition     = var.vpc_id == null || length(coalesce(var.private_subnet_ids, [])) > 0
     error_message = "private_subnet_ids must be provided when using an existing VPC (vpc_id is set)."
   }
 }
@@ -43,7 +43,7 @@ variable "public_subnet_ids" {
   default     = null
 
   validation {
-    condition     = var.vpc_id == null || (var.public_subnet_ids != null && length(var.public_subnet_ids) > 0)
+    condition     = var.vpc_id == null || length(coalesce(var.public_subnet_ids, [])) > 0
     error_message = "public_subnet_ids must be provided when using an existing VPC (vpc_id is set)."
   }
 }
