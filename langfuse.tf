@@ -77,7 +77,7 @@ redis:
 s3:
   deploy: false
   bucket: ${aws_s3_bucket.langfuse.id}
-  region: ${data.aws_region.current.name}
+  region: ${data.aws_region.current.id}
   forcePathStyle: false
   eventUpload:
     prefix: "events/"
@@ -197,12 +197,11 @@ resource "kubernetes_secret" "langfuse" {
 }
 
 resource "helm_release" "langfuse" {
-  name             = "langfuse"
-  repository       = "https://langfuse.github.io/langfuse-k8s"
-  version          = var.langfuse_helm_chart_version
-  chart            = "langfuse"
-  namespace        = "langfuse"
-  create_namespace = true
+  name       = "langfuse"
+  repository = "https://langfuse.github.io/langfuse-k8s"
+  version    = var.langfuse_helm_chart_version
+  chart      = "langfuse"
+  namespace  = kubernetes_namespace.langfuse.metadata[0].name
 
   values = compact([
     local.langfuse_values,
@@ -213,10 +212,14 @@ resource "helm_release" "langfuse" {
   ])
 
   depends_on = [
+    kubernetes_namespace.langfuse,
     aws_iam_role.langfuse_irsa,
     aws_iam_role_policy.langfuse_s3_access,
     aws_eks_fargate_profile.namespaces,
     kubernetes_persistent_volume.clickhouse_data,
     kubernetes_persistent_volume.clickhouse_zookeeper,
+    kubernetes_service_account.aws_load_balancer_controller,
+    helm_release.aws_load_balancer_controller
   ]
 }
+
