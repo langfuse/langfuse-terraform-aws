@@ -338,3 +338,15 @@ This module creates a complete Langfuse stack with the following components:
 ## License
 
 MIT Licensed. See LICENSE for full details.
+
+
+
+## Changelog for Terraform Langfuse Deployment Fix
+
+### Updates:
+- **helm_release:** Refactored to use dynamic namespace and correct dependency order.
+- **aws_load_balancer_controller:** Updated deprecated `region.name` to `region.id`.
+- **Subnet Validation:** Used `coalesce` to prevent null length errors when VPC exists.
+- **Providers:** Added AWS SSO profile and integrated Kubernetes & Helm providers for EKS cluster.
+
+> All commits authored by Ahmed Ali Baig using GitHub noreply email to keep private information safe.
