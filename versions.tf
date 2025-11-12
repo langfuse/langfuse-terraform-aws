@@ -29,10 +29,13 @@ terraform {
   }
 }
 
-provider "aws" {
-  profile = "di"
-  region  = "us-east-1"
-}
+##AWS SSO Profile, if you deploy into your client's account in my case, "di" profile,
+##I have the same in the AWS config file. You may change it as per your client's name, 
+
+#provider "aws" {
+#  profile = "di"
+#  region  = "us-east-1"
+#}
 
 provider "kubernetes" {
   host                   = aws_eks_cluster.langfuse.endpoint
