@@ -96,6 +96,12 @@ variable "postgres_version" {
   default     = "15.12"
 }
 
+variable "postgres_port" {
+  description = "PostgreSQL port"
+  type        = number
+  default     = 5432
+}
+
 variable "cache_node_type" {
   description = "ElastiCache node type"
   type        = string
