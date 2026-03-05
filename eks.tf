@@ -150,4 +150,32 @@ resource "aws_iam_role_policy_attachment" "eks_service_policy" {
 resource "aws_cloudwatch_log_group" "eks" {
   name              = "/aws/eks/${var.name}/cluster"
   retention_in_days = 30
-} 
+}
+
+# CoreDNS pods carry the annotation `eks.amazonaws.com/compute-type: ec2` by default,
+# which prevents them from being scheduled on Fargate nodes. On a Fargate-only cluster
+# this causes the "0/N nodes available: N node(s) had untolerated taint
+# {eks.amazonaws.com/compute-type: fargate}" error.
+# The fix is to add a toleration for the Fargate taint so pods are accepted by Fargate nodes.
+resource "null_resource" "coredns_fargate_patch" {
+  triggers = {
+    cluster_name                = aws_eks_cluster.langfuse.name
+    fargate_profile_kube_system = aws_eks_fargate_profile.namespaces["kube-system"].id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      aws eks update-kubeconfig \
+        --region ${data.aws_region.current.id} \
+        --name ${aws_eks_cluster.langfuse.name}
+      
+      kubectl patch deployment coredns \
+        -n kube-system \
+        -p='{"spec":{"template":{"spec":{"tolerations":[{"key":"eks.amazonaws.com/compute-type","operator":"Equal","value":"fargate","effect":"NoSchedule"}]}}}}'
+    EOT
+  }
+
+  depends_on = [
+    aws_eks_fargate_profile.namespaces,
+  ]
+}
