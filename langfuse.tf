@@ -1,8 +1,13 @@
 locals {
   inbound_cidrs_csv = join(",", var.ingress_inbound_cidrs)
-  langfuse_values   = <<EOT
+
+  # Only set EFS as default storage class when deploying bundled ClickHouse
+  clickhouse_storage_values = !var.clickhouse_deploy ? "" : <<EOT
 global:
   defaultStorageClass: efs
+EOT
+
+  langfuse_values = <<EOT
 langfuse:
   salt:
     secretKeyRef:
@@ -43,6 +48,29 @@ postgresql:
     existingSecret: langfuse
     secretKeys:
       userPasswordKey: postgres-password
+redis:
+  deploy: false
+  host: ${aws_elasticache_replication_group.redis.primary_endpoint_address}
+  auth:
+    existingSecret: langfuse
+    existingSecretPasswordKey: redis-password
+  tls:
+    enabled: true
+s3:
+  deploy: false
+  bucket: ${aws_s3_bucket.langfuse.id}
+  region: ${data.aws_region.current.id}
+  forcePathStyle: false
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"
+EOT
+
+  # Bundled ClickHouse deployed via the Helm chart
+  clickhouse_bundled_values = <<EOT
 clickhouse:
   auth:
     existingSecret: langfuse
@@ -66,26 +94,26 @@ clickhouse:
       requests:
         cpu: "${var.clickhouse_keeper_cpu}"
         memory: "${var.clickhouse_keeper_memory}"
-redis:
-  deploy: false
-  host: ${aws_elasticache_replication_group.redis.primary_endpoint_address}
-  auth:
-    existingSecret: langfuse
-    existingSecretPasswordKey: redis-password
-  tls:
-    enabled: true
-s3:
-  deploy: false
-  bucket: ${aws_s3_bucket.langfuse.id}
-  region: ${data.aws_region.current.id}
-  forcePathStyle: false
-  eventUpload:
-    prefix: "events/"
-  batchExport:
-    prefix: "exports/"
-  mediaUpload:
-    prefix: "media/"
 EOT
+
+  # External ClickHouse instance (e.g. ClickHouse Cloud)
+  clickhouse_external_values = <<EOT
+clickhouse:
+  deploy: false
+  host: ${var.clickhouse_host}
+  httpPort: ${var.clickhouse_http_port}
+  nativePort: ${var.clickhouse_native_port}
+  auth:
+    username: ${var.clickhouse_user}
+    database: ${var.clickhouse_database}
+    existingSecret: langfuse
+    existingSecretKey: clickhouse-password
+  migration:
+    ssl: ${var.clickhouse_ssl}
+  clusterEnabled: ${var.clickhouse_cluster_enabled}
+EOT
+
+  clickhouse_values = var.clickhouse_deploy ? local.clickhouse_bundled_values : local.clickhouse_external_values
 
   additional_env_values = length(var.additional_env) == 0 ? "" : <<EOT
 langfuse:
@@ -144,7 +172,7 @@ EOT
   # <asynchronous_insert_log remove="1"/>
   # <query_metric_log remove="1"/>
   # <error_log remove="1"/>
-  clickhouse_overwrite_values = var.enable_clickhouse_log_tables ? "" : <<EOT
+  clickhouse_overwrite_values = !var.clickhouse_deploy || var.enable_clickhouse_log_tables ? "" : <<EOT
 clickhouse:
   extraOverrides: |
       <clickhouse>
@@ -191,7 +219,7 @@ resource "kubernetes_secret" "langfuse" {
     "postgres-password"   = random_password.postgres_password.result
     "salt"                = random_bytes.salt.base64
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
-    "clickhouse-password" = random_password.clickhouse_password.result
+    "clickhouse-password" = var.clickhouse_password != "" ? var.clickhouse_password : random_password.clickhouse_password[0].result
     "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
   }
 }
@@ -204,7 +232,9 @@ resource "helm_release" "langfuse" {
   namespace  = kubernetes_namespace.langfuse.metadata[0].name
 
   values = compact([
+    local.clickhouse_storage_values,
     local.langfuse_values,
+    local.clickhouse_values,
     local.ingress_values,
     local.encryption_values,
     local.additional_env_values,
@@ -222,4 +252,3 @@ resource "helm_release" "langfuse" {
     helm_release.aws_load_balancer_controller
   ]
 }
-

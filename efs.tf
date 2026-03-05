@@ -1,5 +1,6 @@
 # EFS File System
 resource "aws_efs_file_system" "langfuse" {
+  count           = var.clickhouse_deploy ? 1 : 0
   creation_token  = "${var.name}-efs"
   encrypted       = true
   throughput_mode = "elastic"
@@ -11,14 +12,15 @@ resource "aws_efs_file_system" "langfuse" {
 
 # Mount targets in each private subnet
 resource "aws_efs_mount_target" "eks" {
-  count           = length(local.private_subnets)
-  file_system_id  = aws_efs_file_system.langfuse.id
+  count           = var.clickhouse_deploy ? length(local.private_subnets) : 0
+  file_system_id  = aws_efs_file_system.langfuse[0].id
   subnet_id       = local.private_subnets[count.index]
-  security_groups = [aws_security_group.efs.id]
+  security_groups = [aws_security_group.efs[0].id]
 }
 
 # Security group for EFS
 resource "aws_security_group" "efs" {
+  count       = var.clickhouse_deploy ? 1 : 0
   name        = "${var.name}-efs"
   description = "Security group for EFS"
   vpc_id      = local.vpc_id
@@ -45,7 +47,8 @@ resource "aws_security_group" "efs" {
 
 # EFS CSI Driver IAM Policy
 resource "aws_iam_policy" "efs" {
-  name = "${var.name}-efs"
+  count = var.clickhouse_deploy ? 1 : 0
+  name  = "${var.name}-efs"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -92,7 +95,8 @@ resource "aws_iam_policy" "efs" {
 
 # EFS CSI Driver IAM Role
 resource "aws_iam_role" "efs" {
-  name = "${var.name}-efs-csi"
+  count = var.clickhouse_deploy ? 1 : 0
+  name  = "${var.name}-efs-csi"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -114,11 +118,13 @@ resource "aws_iam_role" "efs" {
 }
 
 resource "aws_iam_role_policy_attachment" "efs" {
-  policy_arn = aws_iam_policy.efs.arn
-  role       = aws_iam_role.efs.name
+  count      = var.clickhouse_deploy ? 1 : 0
+  policy_arn = aws_iam_policy.efs[0].arn
+  role       = aws_iam_role.efs[0].name
 }
 
 resource "kubernetes_storage_class" "efs" {
+  count = var.clickhouse_deploy ? 1 : 0
   metadata {
     name = "efs"
   }

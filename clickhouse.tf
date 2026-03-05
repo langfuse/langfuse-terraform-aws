@@ -1,6 +1,7 @@
 # Random password for ClickHouse
 # Using a alphanumeric password to avoid issues with special characters on bash entrypoint
 resource "random_password" "clickhouse_password" {
+  count       = var.clickhouse_password == "" ? 1 : 0
   length      = 64
   special     = false
   min_lower   = 1
@@ -10,8 +11,8 @@ resource "random_password" "clickhouse_password" {
 
 # EFS Access Points for Clickhouse instances
 resource "aws_efs_access_point" "clickhouse" {
-  count          = var.clickhouse_instance_count
-  file_system_id = aws_efs_file_system.langfuse.id
+  count          = var.clickhouse_deploy ? var.clickhouse_instance_count : 0
+  file_system_id = aws_efs_file_system.langfuse[0].id
 
   root_directory {
     path = "/clickhouse/${count.index}"
@@ -34,8 +35,8 @@ resource "aws_efs_access_point" "clickhouse" {
 
 # EFS Access Points for Zookeeper instances
 resource "aws_efs_access_point" "zookeeper" {
-  count          = var.clickhouse_instance_count
-  file_system_id = aws_efs_file_system.langfuse.id
+  count          = var.clickhouse_deploy ? var.clickhouse_instance_count : 0
+  file_system_id = aws_efs_file_system.langfuse[0].id
 
   root_directory {
     path = "/zookeeper/${count.index}"
@@ -58,7 +59,7 @@ resource "aws_efs_access_point" "zookeeper" {
 
 # Create the Clickhouse PVs
 resource "kubernetes_persistent_volume" "clickhouse_data" {
-  count = var.clickhouse_instance_count
+  count = var.clickhouse_deploy ? var.clickhouse_instance_count : 0
 
   metadata {
     name = "clickhouse-data-${count.index}"
@@ -71,11 +72,11 @@ resource "kubernetes_persistent_volume" "clickhouse_data" {
     volume_mode                      = "Filesystem"
     access_modes                     = ["ReadWriteOnce"]
     persistent_volume_reclaim_policy = "Retain"
-    storage_class_name               = kubernetes_storage_class.efs.metadata[0].name
+    storage_class_name               = kubernetes_storage_class.efs[0].metadata[0].name
     persistent_volume_source {
       csi {
         driver        = "efs.csi.aws.com"
-        volume_handle = "${aws_efs_file_system.langfuse.id}::${aws_efs_access_point.clickhouse[count.index].id}"
+        volume_handle = "${aws_efs_file_system.langfuse[0].id}::${aws_efs_access_point.clickhouse[count.index].id}"
       }
     }
     claim_ref {
@@ -90,7 +91,7 @@ resource "kubernetes_persistent_volume" "clickhouse_data" {
 }
 
 resource "kubernetes_persistent_volume" "clickhouse_zookeeper" {
-  count = var.clickhouse_instance_count
+  count = var.clickhouse_deploy ? var.clickhouse_instance_count : 0
 
   metadata {
     name = "clickhouse-zookeeper-${count.index}"
@@ -103,11 +104,11 @@ resource "kubernetes_persistent_volume" "clickhouse_zookeeper" {
     volume_mode                      = "Filesystem"
     access_modes                     = ["ReadWriteOnce"]
     persistent_volume_reclaim_policy = "Retain"
-    storage_class_name               = kubernetes_storage_class.efs.metadata[0].name
+    storage_class_name               = kubernetes_storage_class.efs[0].metadata[0].name
     persistent_volume_source {
       csi {
         driver        = "efs.csi.aws.com"
-        volume_handle = "${aws_efs_file_system.langfuse.id}::${aws_efs_access_point.zookeeper[count.index].id}"
+        volume_handle = "${aws_efs_file_system.langfuse[0].id}::${aws_efs_access_point.zookeeper[count.index].id}"
       }
     }
     claim_ref {

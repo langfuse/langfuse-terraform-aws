@@ -254,3 +254,59 @@ variable "additional_env" {
     error_message = "Each environment variable must have either 'value' or 'valueFrom' specified, but not both."
   }
 }
+
+# External ClickHouse configuration
+variable "clickhouse_deploy" {
+  description = "Deploy ClickHouse via Helm chart. Set to false to use an external ClickHouse instance."
+  type        = bool
+  default     = true
+}
+
+variable "clickhouse_host" {
+  description = "Hostname of external ClickHouse instance (required when clickhouse_deploy = false)"
+  type        = string
+  default     = ""
+}
+
+variable "clickhouse_http_port" {
+  description = "HTTP port for external ClickHouse (8123 for non-TLS, 8443 for TLS)"
+  type        = number
+  default     = 8443
+}
+
+variable "clickhouse_native_port" {
+  description = "Native/TCP port for external ClickHouse (9000 for non-TLS, 9440 for TLS)"
+  type        = number
+  default     = 9440
+}
+
+variable "clickhouse_database" {
+  description = "ClickHouse database name"
+  type        = string
+  default     = "default"
+}
+
+variable "clickhouse_user" {
+  description = "ClickHouse username"
+  type        = string
+  default     = "default"
+}
+
+variable "clickhouse_password" {
+  description = "ClickHouse password for external instance. If empty, a random password is generated (for bundled ClickHouse)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "clickhouse_ssl" {
+  description = "Use SSL for ClickHouse migration connection (required for ClickHouse Cloud)"
+  type        = bool
+  default     = true
+}
+
+variable "clickhouse_cluster_enabled" {
+  description = "Enable ON CLUSTER DDL commands. Set to false for ClickHouse Cloud."
+  type        = bool
+  default     = false
+}
