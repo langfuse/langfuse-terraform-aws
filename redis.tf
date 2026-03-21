@@ -63,7 +63,7 @@ resource "aws_elasticache_replication_group" "redis" {
   subnet_group_name          = aws_elasticache_subnet_group.redis.name
   security_group_ids         = [aws_security_group.redis.id]
   engine                     = "redis"
-  engine_version             = "7.0"
+  engine_version             = "7.1"
   auth_token                 = random_password.redis_password.result
   transit_encryption_enabled = true
   at_rest_encryption_enabled = var.redis_at_rest_encryption
