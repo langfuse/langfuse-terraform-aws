@@ -121,6 +121,7 @@ langfuse:
       alb.ingress.kubernetes.io/scheme: ${var.alb_scheme}
       alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-3-PQ-2025-09
       alb.ingress.kubernetes.io/inbound-cidrs: ${local.inbound_cidrs_csv}
     hosts:
     - host: ${var.domain}
