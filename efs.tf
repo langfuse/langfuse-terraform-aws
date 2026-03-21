@@ -14,7 +14,7 @@ resource "aws_efs_mount_target" "eks" {
   count           = length(local.private_subnets)
   file_system_id  = aws_efs_file_system.langfuse.id
   subnet_id       = local.private_subnets[count.index]
-  security_groups = [aws_security_group.eks.id]
+  security_groups = [aws_security_group.efs.id]
 }
 
 # Security group for EFS

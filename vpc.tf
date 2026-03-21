@@ -21,8 +21,8 @@ module "vpc" {
   public_subnets  = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 48)]
 
   enable_nat_gateway     = true
-  single_nat_gateway     = !var.use_single_nat_gateway
-  one_nat_gateway_per_az = var.use_single_nat_gateway
+  single_nat_gateway     = var.use_single_nat_gateway
+  one_nat_gateway_per_az = !var.use_single_nat_gateway
 
   enable_dns_hostnames = true
   enable_dns_support   = true
