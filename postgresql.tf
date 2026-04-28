@@ -79,8 +79,9 @@ resource "aws_rds_cluster_instance" "postgres" {
   identifier         = "${var.name}-postgres-${count.index + 1}"
   cluster_identifier = aws_rds_cluster.postgres.id
   instance_class     = "db.serverless"
-  engine             = aws_rds_cluster.postgres.engine
-  engine_version     = aws_rds_cluster.postgres.engine_version
+  engine              = aws_rds_cluster.postgres.engine
+  engine_version      = aws_rds_cluster.postgres.engine_version
+  publicly_accessible = false
 
   # Enable Performance Insights
   performance_insights_enabled          = true
