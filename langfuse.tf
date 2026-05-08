@@ -184,7 +184,7 @@ resource "random_bytes" "encryption_key" {
 resource "kubernetes_secret" "langfuse" {
   metadata {
     name      = "langfuse"
-    namespace = "langfuse"
+    namespace = kubernetes_namespace.langfuse.metadata[0].name
   }
 
   data = {
