@@ -198,11 +198,9 @@ resource "kubernetes_secret" "langfuse" {
 }
 
 resource "helm_release" "langfuse" {
-  name       = "langfuse"
-  repository = "https://langfuse.github.io/langfuse-k8s"
-  version    = var.langfuse_helm_chart_version
-  chart      = "langfuse"
-  namespace  = kubernetes_namespace.langfuse.metadata[0].name
+  name      = "langfuse"
+  chart     = "https://github.com/langfuse/langfuse-k8s/releases/download/langfuse-${var.langfuse_helm_chart_version}/langfuse-${var.langfuse_helm_chart_version}.tgz"
+  namespace = kubernetes_namespace.langfuse.metadata[0].name
 
   values = compact([
     local.langfuse_values,
