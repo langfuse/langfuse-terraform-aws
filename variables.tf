@@ -68,7 +68,7 @@ variable "private_route_table_ids" {
 variable "kubernetes_version" {
   description = "Kubernetes version to use for the EKS cluster"
   type        = string
-  default     = "1.32"
+  default     = "1.35"
 }
 
 variable "use_encryption_key" {
