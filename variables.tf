@@ -9,6 +9,17 @@ variable "domain" {
   type        = string
 }
 
+variable "certificate_arn" {
+  description = "ARN of an existing, validated ACM certificate to use. If not provided, a new certificate will be created and validated via Route53."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.certificate_arn == null || can(regex("^arn:aws[^:]*:acm:", var.certificate_arn))
+    error_message = "certificate_arn must be a valid ACM certificate ARN."
+  }
+}
+
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
   type        = string

@@ -122,6 +122,7 @@ langfuse:
       alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
       alb.ingress.kubernetes.io/inbound-cidrs: ${local.inbound_cidrs_csv}
+      alb.ingress.kubernetes.io/certificate-arn: ${local.certificate_arn}
     hosts:
     - host: ${var.domain}
       paths:
