@@ -9,6 +9,11 @@ resource "random_password" "clickhouse_password" {
   min_numeric = 1
 }
 
+moved {
+  from = random_password.clickhouse_password
+  to   = random_password.clickhouse_password[0]
+}
+
 # EFS Access Points for Clickhouse instances
 resource "aws_efs_access_point" "clickhouse" {
   count          = var.clickhouse_deploy ? var.clickhouse_instance_count : 0

@@ -130,3 +130,36 @@ resource "kubernetes_storage_class" "efs" {
   }
   storage_provisioner = "efs.csi.aws.com"
 }
+
+# Preserve existing state when adding `count` to previously-singleton resources
+# so that enabling `clickhouse_deploy = true` (the default) on an existing
+# deployment doesn't destroy and recreate the EFS file system, IAM, etc.
+moved {
+  from = aws_efs_file_system.langfuse
+  to   = aws_efs_file_system.langfuse[0]
+}
+
+moved {
+  from = aws_security_group.efs
+  to   = aws_security_group.efs[0]
+}
+
+moved {
+  from = aws_iam_policy.efs
+  to   = aws_iam_policy.efs[0]
+}
+
+moved {
+  from = aws_iam_role.efs
+  to   = aws_iam_role.efs[0]
+}
+
+moved {
+  from = aws_iam_role_policy_attachment.efs
+  to   = aws_iam_role_policy_attachment.efs[0]
+}
+
+moved {
+  from = kubernetes_storage_class.efs
+  to   = kubernetes_storage_class.efs[0]
+}
