@@ -150,4 +150,19 @@ resource "aws_iam_role_policy_attachment" "eks_service_policy" {
 resource "aws_cloudwatch_log_group" "eks" {
   name              = "/aws/eks/${var.name}/cluster"
   retention_in_days = 30
-} 
+}
+
+# EKS deploys CoreDNS expecting EC2 nodes. On Fargate-only clusters the pods
+# stay Pending (and all in-cluster DNS fails) until this annotation is present.
+resource "kubernetes_annotations" "coredns_fargate" {
+  api_version = "apps/v1"
+  kind        = "Deployment"
+  metadata {
+    name      = "coredns"
+    namespace = "kube-system"
+  }
+  template_annotations = {
+    "eks.amazonaws.com/compute-type" = "fargate"
+  }
+  depends_on = [aws_eks_fargate_profile.namespaces]
+}
