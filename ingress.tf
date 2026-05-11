@@ -20,7 +20,7 @@ data "aws_iam_policy_document" "aws_load_balancer_controller_assume_role_policy"
 
 resource "aws_iam_role" "aws_load_balancer_controller" {
   assume_role_policy = data.aws_iam_policy_document.aws_load_balancer_controller_assume_role_policy.json
-  name               = "aws-load-balancer-controller"
+  name_prefix               = "langfuse-aws-load-balancer-controller-"
 
   tags = {
     Name = "${local.tag_name} ALB"
@@ -28,8 +28,8 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
 }
 
 resource "aws_iam_policy" "aws_load_balancer_controller" {
-  name        = "AWSLoadBalancerControllerIAMPolicy"
-  description = "IAM policy for AWS Load Balancer Controller"
+  name_prefix = "langfuse-aws-load-balancer-controller-iam-policy-"
+  description = "IAM policy for Langfuse Load Balancer Controller"
 
   policy = jsonencode({
     Version = "2012-10-17"

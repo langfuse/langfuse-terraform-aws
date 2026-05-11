@@ -45,7 +45,7 @@ resource "aws_security_group" "efs" {
 
 # EFS CSI Driver IAM Policy
 resource "aws_iam_policy" "efs" {
-  name = "${var.name}-efs"
+  name_prefix = "${var.name}-efs-"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -92,7 +92,7 @@ resource "aws_iam_policy" "efs" {
 
 # EFS CSI Driver IAM Role
 resource "aws_iam_role" "efs" {
-  name = "${var.name}-efs-csi"
+  name_prefix = "${var.name}-efs-csi-"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

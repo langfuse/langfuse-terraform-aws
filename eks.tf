@@ -45,7 +45,7 @@ data "tls_certificate" "eks" {
 
 # Fargate Profile Role
 resource "aws_iam_role" "fargate" {
-  name = "${var.name}-fargate"
+  name_prefix = "${var.name}-fargate-"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -117,7 +117,7 @@ resource "aws_security_group_rule" "eks_vpc" {
 }
 
 resource "aws_iam_role" "eks" {
-  name = "${var.name}-eks"
+  name_prefix = "${var.name}-eks-"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
