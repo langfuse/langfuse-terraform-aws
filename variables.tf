@@ -9,14 +9,25 @@ variable "domain" {
   type        = string
 }
 
+variable "skip_dns_setup" {
+  description = "When true, skips Route53 zone creation, ACM certificate creation, DNS validation records, and the Route53 alias record for the ALB. Use this when DNS and certificate management are handled externally. certificate_arn must be provided alongside this flag. The load_balancer_dns_name and load_balancer_zone_id outputs can then be used to configure DNS records outside this module."
+  type        = bool
+  default     = false
+}
+
 variable "certificate_arn" {
-  description = "ARN of an existing, validated ACM certificate to use. If not provided, a new certificate will be created and validated via Route53."
+  description = "ARN of an existing, externally managed ACM certificate. Required when skip_dns_setup is true."
   type        = string
   default     = null
 
   validation {
     condition     = var.certificate_arn == null || can(regex("^arn:aws[^:]*:acm:", var.certificate_arn))
     error_message = "certificate_arn must be a valid ACM certificate ARN."
+  }
+
+  validation {
+    condition     = !var.skip_dns_setup || var.certificate_arn != null
+    error_message = "certificate_arn must be provided when skip_dns_setup is true."
   }
 }
 
