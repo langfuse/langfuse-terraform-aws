@@ -202,6 +202,11 @@ resource "helm_release" "langfuse" {
   chart     = "https://github.com/langfuse/langfuse-k8s/releases/download/langfuse-${var.langfuse_helm_chart_version}/langfuse-${var.langfuse_helm_chart_version}.tgz"
   namespace = kubernetes_namespace.langfuse.metadata[0].name
 
+  # Fargate + EFS cold-start overhead means the default 300s is not enough.
+  # ClickHouse tables need ~60s to initialize after ZooKeeper becomes ready,
+  # and the web pod may crash-restart once before ClickHouse is fully ready.
+  timeout = var.helm_release_timeout
+
   values = compact([
     local.langfuse_values,
     local.ingress_values,
