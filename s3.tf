@@ -107,5 +107,36 @@ resource "aws_iam_role_policy" "langfuse_s3_access" {
   })
 }
 
+# Bedrock access policy for the IRSA role
+resource "aws_iam_role_policy" "langfuse_bedrock_access" {
+  name_prefix = "langfuse-bedrock-access-"
+  role        = aws_iam_role.langfuse_irsa.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ]
+        Resource = [
+          "arn:aws:bedrock:*::foundation-model/*",
+          "arn:aws:bedrock:*:*:inference-profile/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "aws-marketplace:ViewSubscriptions",
+          "aws-marketplace:Subscribe"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # Get current AWS account ID
 data "aws_caller_identity" "current" {}
