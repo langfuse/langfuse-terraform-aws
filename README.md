@@ -48,6 +48,9 @@ module "langfuse" {
   # Optional: Activate additional log tables in ClickHouse. Will increase EFS costs, but may aid in debugging.
   enable_clickhouse_log_tables = false  # Set to true to have additional logs.
 
+  # Optional: Enable code-based eval execution via tenant-isolated AWS Lambda executors.
+  enable_code_based_eval_executors = true
+
   # Optional: Add additional environment variables
   additional_env = [
     # Direct value
@@ -211,6 +214,10 @@ The default values are based on the recommendations from the [Langfuse K8s docum
 
 These defaults provide a good starting point for production workloads, but you can adjust them based on your specific requirements by setting the corresponding variables in your Terraform configuration.
 
+### Code-Based Evals
+
+Set `enable_code_based_eval_executors = true` to create isolated Python and Node.js Lambda executors for code-based evals. The code-based eval executors rely on [AWS Lambda tenant isolation](https://docs.aws.amazon.com/lambda/latest/dg/tenant-isolation.html), which keeps execution environments isolated per tenant when invoking shared Lambda functions. The module creates a dedicated no-internet VPC for the executors, grants the Langfuse service account permission to invoke them, configures the Langfuse Helm release to use the AWS Lambda dispatcher, and enables the worker queue consumer for code eval execution.
+
 ### Customizing Resources
 
 You can override any of the resource configurations by setting the appropriate variables.
@@ -255,7 +262,8 @@ This module creates a complete Langfuse stack with the following components:
 
 | Name       | Version |
 |------------|---------|
-| aws        | >= 5.0  |
+| aws        | >= 6.30 |
+| archive    | >= 2.8  |
 | kubernetes | >= 2.10 |
 | helm       | >= 2.5  |
 | random     | >= 3.0  |
@@ -314,6 +322,12 @@ This module creates a complete Langfuse stack with the following components:
 | ingress_inbound_cidrs        | Allowed CIDR blocks for ingress alb                                                                              | list(string) | ["0.0.0.0/0"]                          |    no    |
 | redis_at_rest_encryption     | At rest encryption enabled for the redis cluster                                                                 | bool         | false                                  |    no    |
 | redis_multi_az               | Multi availability zone enabled for the redis cluster                                                            | bool         | false                                  |    no    |
+| enable_code_based_eval_executors | Create tenant-isolated Lambda executors for code-based evals                                                  | bool         | false                                  |    no    |
+| vpc_cidr_block_code_based_evals  | CIDR block for the dedicated isolated code-based eval executor VPC                                           | string       | "10.1.0.0/24"                         |    no    |
+| code_based_eval_executor_lambda_settings | Per-runtime resource settings for code-based eval executor Lambdas                                   | object       | see variables.tf                       |    no    |
+| code_eval_local_timeout_ms | Local timeout in milliseconds for code eval execution requests                                                       | number       | 2000                                   |    no    |
+| code_eval_execution_queue_shard_count | Shard count for the code eval execution queue                                                            | number       | 1                                      |    no    |
+| worker_code_eval_execution_queue_processing_concurrency | Code eval execution queue processing concurrency for Langfuse worker pods                | string       | "5"                                    |    no    |
 
 ## Outputs
 
@@ -328,6 +342,7 @@ This module creates a complete Langfuse stack with the following components:
 | bucket_name            | S3 bucket name for Langfuse      |
 | bucket_id              | S3 bucket ID for Langfuse        |
 | route53_nameservers    | Route53 zone nameservers         |
+| code_based_eval_executor_lambda_function_names | Code-based eval executor Lambda function names by runtime |
 
 ## Support
 

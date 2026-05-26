@@ -227,6 +227,77 @@ variable "redis_multi_az" {
   default     = false
 }
 
+variable "enable_code_based_eval_executors" {
+  description = "Create tenant-isolated Lambda executors for code-based evals."
+  type        = bool
+  default     = false
+}
+
+variable "vpc_cidr_block_code_based_evals" {
+  description = "CIDR block for the dedicated isolated code-based eval executor VPC."
+  type        = string
+  default     = "10.1.0.0/24"
+
+  validation {
+    condition     = can(cidrhost(var.vpc_cidr_block_code_based_evals, 0))
+    error_message = "vpc_cidr_block_code_based_evals must be a valid CIDR block."
+  }
+}
+
+variable "code_based_eval_executor_lambda_settings" {
+  description = "Per-runtime resource settings for code-based eval executor Lambdas. Lambda CPU is allocated proportionally to memory and cannot be configured directly."
+  type = object({
+    python = object({
+      memory_size                    = number
+      timeout                        = number
+      reserved_concurrent_executions = number
+    })
+    node = object({
+      memory_size                    = number
+      timeout                        = number
+      reserved_concurrent_executions = number
+    })
+  })
+  default = {
+    python = {
+      memory_size                    = 128
+      timeout                        = 2
+      reserved_concurrent_executions = 50
+    }
+    node = {
+      memory_size                    = 128
+      timeout                        = 2
+      reserved_concurrent_executions = 50
+    }
+  }
+
+  validation {
+    condition = alltrue([
+      for settings in values(var.code_based_eval_executor_lambda_settings) :
+      settings.memory_size >= 128 && settings.timeout >= 1 && settings.timeout <= 900 && settings.reserved_concurrent_executions >= 0
+    ])
+    error_message = "Each code-based eval executor Lambda must use at least 128 MB memory, a timeout between 1 and 900 seconds, and non-negative reserved concurrency."
+  }
+}
+
+variable "code_eval_local_timeout_ms" {
+  description = "Local timeout in milliseconds for code eval execution requests."
+  type        = number
+  default     = 2000
+}
+
+variable "code_eval_execution_queue_shard_count" {
+  description = "Shard count for the code eval execution queue. Do not decrease after enabling."
+  type        = number
+  default     = 1
+}
+
+variable "worker_code_eval_execution_queue_processing_concurrency" {
+  description = "Code eval execution queue processing concurrency for Langfuse worker pods."
+  type        = string
+  default     = "5"
+}
+
 # Additional environment variables
 variable "additional_env" {
   description = "Additional environment variables to set on Langfuse pods"

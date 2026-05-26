@@ -1,0 +1,71 @@
+import { stripTypeScriptTypes } from "node:module";
+
+// `stripTypeScriptTypes` is loaded lazily; call it once during initialization.
+stripTypeScriptTypes("");
+
+export async function handler(event) {
+  let source;
+  try {
+    source = stripTypeScriptTypes(event.code.source, { mode: "strip" });
+  } catch (error) {
+    return runnerError(
+      "INVALID_SOURCE",
+      `Failed to strip TypeScript syntax: ${formatError(error)}`,
+    );
+  }
+
+  let evaluate;
+  try {
+    evaluate = Function(
+      `${source}
+
+if (typeof evaluate !== "function") {
+  throw new Error("Evaluator source must define evaluate(ctx)");
+}
+
+return evaluate;`,
+    )();
+  } catch (error) {
+    return runnerError(
+      "INVALID_SOURCE",
+      `Failed to prepare evaluator source: ${formatError(error)}`,
+    );
+  }
+
+  let result;
+  try {
+    result = await evaluate(event.payload);
+  } catch (error) {
+    return runnerError("USER_CODE_ERROR", formatError(error));
+  }
+
+  return normalizeResult(result);
+}
+
+function normalizeResult(result) {
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !Array.isArray(result.scores)
+  ) {
+    return runnerError(
+      "INVALID_RESULT",
+      "Evaluator must return an object shaped like { scores: [...] }",
+    );
+  }
+
+  return result;
+}
+
+function runnerError(code, message) {
+  return {
+    error: {
+      code,
+      message,
+    },
+  };
+}
+
+function formatError(error) {
+  return error instanceof Error ? error.message : String(error);
+}

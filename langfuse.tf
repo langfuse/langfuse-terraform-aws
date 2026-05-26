@@ -87,9 +87,21 @@ s3:
     prefix: "media/"
 EOT
 
-  additional_env_values = length(var.additional_env) == 0 ? "" : <<EOT
+  additional_env_values = (!var.enable_code_based_eval_executors && length(var.additional_env) == 0) ? "" : <<EOT
 langfuse:
   additionalEnv:
+%{if var.enable_code_based_eval_executors~}
+    - name: NEXT_PUBLIC_LANGFUSE_CODE_EVAL_ENABLED
+      value: "true"
+    - name: LANGFUSE_CODE_EVAL_DISPATCHER
+      value: "aws-lambda"
+    - name: LANGFUSE_CODE_EVAL_AWS_LAMBDA_PYTHON_FUNCTION_NAME
+      value: "${local.code_based_eval_executor_lambda_names.python}"
+    - name: LANGFUSE_CODE_EVAL_AWS_LAMBDA_NODE_FUNCTION_NAME
+      value: "${local.code_based_eval_executor_lambda_names.node}"
+    - name: LANGFUSE_CODE_EVAL_LOCAL_TIMEOUT_MS
+      value: "${var.code_eval_local_timeout_ms}"
+%{endif~}
 %{for env in var.additional_env~}
     - name: ${env.name}
 %{if env.value != null~}
@@ -109,6 +121,19 @@ langfuse:
 %{endif~}
 %{endif~}
 %{endfor~}
+EOT
+
+  code_eval_worker_values = var.enable_code_based_eval_executors == false ? "" : <<EOT
+langfuse:
+  worker:
+    pod:
+      additionalEnv:
+        - name: LANGFUSE_CODE_EVAL_EXECUTION_QUEUE_SHARD_COUNT
+          value: "${var.code_eval_execution_queue_shard_count}"
+        - name: LANGFUSE_CODE_EVAL_EXECUTION_WORKER_CONCURRENCY
+          value: "${var.worker_code_eval_execution_queue_processing_concurrency}"
+        - name: QUEUE_CONSUMER_CODE_EVAL_EXECUTION_QUEUE_IS_ENABLED
+          value: "true"
 EOT
 
   ingress_values    = <<EOT
@@ -208,6 +233,7 @@ resource "helm_release" "langfuse" {
     local.ingress_values,
     local.encryption_values,
     local.additional_env_values,
+    local.code_eval_worker_values,
     local.clickhouse_overwrite_values,
   ])
 
@@ -215,6 +241,7 @@ resource "helm_release" "langfuse" {
     kubernetes_namespace.langfuse,
     aws_iam_role.langfuse_irsa,
     aws_iam_role_policy.langfuse_s3_access,
+    aws_iam_role_policy.langfuse_code_based_eval_executor_invoke,
     aws_eks_fargate_profile.namespaces,
     kubernetes_persistent_volume.clickhouse_data,
     kubernetes_persistent_volume.clickhouse_zookeeper,
@@ -222,4 +249,3 @@ resource "helm_release" "langfuse" {
     helm_release.aws_load_balancer_controller
   ]
 }
-
