@@ -1,4 +1,4 @@
-![GitHub Banner](https://github.com/langfuse/langfuse-k8s/assets/2834609/2982b65d-d0bc-4954-82ff-af8da3a4fac8)
+<img width="2400" height="600" alt="hero-b" src="https://github.com/user-attachments/assets/8bf296d2-b41b-483f-be93-695ecd452352" />
 
 # AWS Langfuse Terraform module
 
