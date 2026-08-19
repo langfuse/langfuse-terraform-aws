@@ -1,5 +1,11 @@
+# EFS is only used as persistent storage for the in-cluster ClickHouse and
+# ClickHouse Keeper. With an external ClickHouse (var.external_clickhouse),
+# none of these resources are created.
+
 # EFS File System
 resource "aws_efs_file_system" "langfuse" {
+  count = local.deploy_clickhouse ? 1 : 0
+
   creation_token  = "${var.name}-efs"
   encrypted       = true
   throughput_mode = "elastic"
@@ -11,14 +17,16 @@ resource "aws_efs_file_system" "langfuse" {
 
 # Mount targets in each private subnet
 resource "aws_efs_mount_target" "eks" {
-  count           = length(local.private_subnets)
-  file_system_id  = aws_efs_file_system.langfuse.id
+  count           = local.deploy_clickhouse ? length(local.private_subnets) : 0
+  file_system_id  = aws_efs_file_system.langfuse[0].id
   subnet_id       = local.private_subnets[count.index]
-  security_groups = [aws_security_group.efs.id]
+  security_groups = [aws_security_group.efs[0].id]
 }
 
 # Security group for EFS
 resource "aws_security_group" "efs" {
+  count = local.deploy_clickhouse ? 1 : 0
+
   name        = "${var.name}-efs"
   description = "Security group for EFS"
   vpc_id      = local.vpc_id
@@ -45,6 +53,8 @@ resource "aws_security_group" "efs" {
 
 # EFS CSI Driver IAM Policy
 resource "aws_iam_policy" "efs" {
+  count = local.deploy_clickhouse ? 1 : 0
+
   name = "${var.name}-efs"
 
   policy = jsonencode({
@@ -92,6 +102,8 @@ resource "aws_iam_policy" "efs" {
 
 # EFS CSI Driver IAM Role
 resource "aws_iam_role" "efs" {
+  count = local.deploy_clickhouse ? 1 : 0
+
   name = "${var.name}-efs-csi"
 
   assume_role_policy = jsonencode({
@@ -114,11 +126,15 @@ resource "aws_iam_role" "efs" {
 }
 
 resource "aws_iam_role_policy_attachment" "efs" {
-  policy_arn = aws_iam_policy.efs.arn
-  role       = aws_iam_role.efs.name
+  count = local.deploy_clickhouse ? 1 : 0
+
+  policy_arn = aws_iam_policy.efs[0].arn
+  role       = aws_iam_role.efs[0].name
 }
 
 resource "kubernetes_storage_class" "efs" {
+  count = local.deploy_clickhouse ? 1 : 0
+
   metadata {
     name = "efs"
   }
