@@ -1,0 +1,94 @@
+name: Update Langfuse versions
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Run every Monday at 9 AM UTC
+  workflow_dispatch: # Allow manual triggering
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: Check and update Langfuse versions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Commit the version bumps.
+      pull-requests: write # Open the automated update pull request.
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Bump chart and application versions
+        run: |
+          # The variables.tf defaults are the source of truth for what we ship.
+          current() {
+            sed -n "/^variable \"$1\"/,/^}/p" variables.tf \
+              | sed -n 's/^  default *= *"\(.*\)"$/\1/p'
+          }
+          CHART=$(current langfuse_helm_chart_version)
+          APP=$(current app_version)
+
+          # The chart is released from langfuse-k8s, which tags several charts,
+          # so keep only langfuse-X.Y.Z and take the highest.
+          CHART_LATEST=$(curl -sf "https://api.github.com/repos/langfuse/langfuse-k8s/releases?per_page=100" \
+            | jq -r '.[] | select(.draft or .prerelease | not) | .tag_name | select(startswith("langfuse-")) | ltrimstr("langfuse-")' \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          APP_LATEST=$(curl -sf https://api.github.com/repos/langfuse/langfuse/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+
+          for version in "$CHART" "$APP" "$CHART_LATEST" "$APP_LATEST"; do
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Unsupported version format: '$version'" >&2; exit 1; }
+          done
+          echo "Chart: $CHART -> $CHART_LATEST, application: $APP -> $APP_LATEST"
+
+          # Both versions are documented in variables.tf, the README and the
+          # examples. The lookarounds keep a version from matching inside a
+          # longer one.
+          bump() {
+            [ "$1" = "$2" ] && return 0
+            git ls-files -z '*.tf' '*.md' | OLD="$1" NEW="$2" xargs -0 perl -pi -e \
+              's/(?<![0-9.])\Q$ENV{OLD}\E(?![0-9.])/$ENV{NEW}/g'
+          }
+          bump "$CHART" "$CHART_LATEST"
+          bump "$APP" "$APP_LATEST"
+
+          # A bump that is never released does not reach anyone pinning a tag, so
+          # release it too. Only minor and patch updates: a major upstream bump
+          # needs a deliberately chosen module version.
+          REF=$(grep -oE '\?ref=[^"]+' README.md | head -1 | cut -d= -f2)
+          RELEASE="Leaving the module version alone, because a major upstream bump needs a deliberate one. Run the release workflow after merging."
+          if [ "${CHART%%.*}" = "${CHART_LATEST%%.*}" ] && [ "${APP%%.*}" = "${APP_LATEST%%.*}" ]; then
+            NEXT="${REF%.*}.$(( ${REF##*.} + 1 ))"
+            OLD="$REF" NEW="$NEXT" perl -pi -e 's{\?ref=\Q$ENV{OLD}\E\b}{?ref=$ENV{NEW}}g' README.md
+            RELEASE="Merging this releases \`$NEXT\`."
+          fi
+
+          cat > "$RUNNER_TEMP/body.md" <<EOF
+          | Component | From | To |
+          | --- | --- | --- |
+          | Helm chart | \`$CHART\` | [\`$CHART_LATEST\`](https://github.com/langfuse/langfuse-k8s/releases/tag/langfuse-$CHART_LATEST) |
+          | Langfuse | \`$APP\` | [\`$APP_LATEST\`](https://github.com/langfuse/langfuse/releases/tag/v$APP_LATEST) |
+
+          Rows where both versions match are unchanged. Read the linked release notes before merging: a major bump can need migration steps.
+
+          $RELEASE
+
+          Opened by the weekly version check. Pull requests created with \`GITHUB_TOKEN\` do not trigger \`ci.yml\`, so close and reopen this one to run the checks.
+          EOF
+
+      # Creates nothing when both versions are already current, and updates the
+      # existing pull request when a newer version arrives before it is merged.
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update Langfuse versions"
+          title: "chore: update Langfuse versions"
+          body-path: ${{ runner.temp }}/body.md
+          branch: chore/langfuse-version-updates

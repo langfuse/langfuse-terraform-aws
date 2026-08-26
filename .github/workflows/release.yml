@@ -1,0 +1,84 @@
+name: Release
+
+# Run this workflow with the new version to open the release pull request.
+# Merging it publishes the version the README documents, the same way
+# langfuse-k8s releases charts from Chart.yaml on main.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 1.0.0"
+        required: true
+        type: string
+  push:
+    branches: [main]
+    paths: ["README.md"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Open release pull request
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Commit the version bump.
+      pull-requests: write # Open the release pull request.
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Bump the documented module version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Unsupported version format: '$VERSION'" >&2; exit 1; }
+          perl -pi -e 's{\?ref=[^"]+}{?ref=$ENV{VERSION}}g' README.md
+          git diff --quiet -- README.md && { echo "README.md already documents $VERSION" >&2; exit 1; }
+          exit 0
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump version to ${{ inputs.version }}"
+          title: "chore: bump version to ${{ inputs.version }}"
+          body: "Merging this creates the `${{ inputs.version }}` tag and publishes a GitHub release."
+          branch: release/${{ inputs.version }}
+          delete-branch: true
+
+  release:
+    name: Tag and publish release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Create the tag and the GitHub release.
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # A no-op unless the README names a version that has no tag yet, so
+      # ordinary README edits pass through untouched.
+      - name: Tag and release the documented version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(grep -oE '\?ref=[^"]+' README.md | head -1 | cut -d= -f2)
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "README.md documents '$VERSION', which is not a release version."; exit 0; }
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists."
+            exit 0
+          fi
+          # Creates the tag at this commit along with the release.
+          gh release create "$VERSION" --title "$VERSION" --generate-notes --target "$GITHUB_SHA"
