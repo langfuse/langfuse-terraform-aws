@@ -246,20 +246,20 @@ This module creates a complete Langfuse stack with the following components:
 
 | Name       | Version |
 |------------|---------|
-| terraform  | >= 1.0  |
-| aws        | >= 5.0  |
-| kubernetes | >= 2.10 |
-| helm       | >= 2.5  |
+| terraform  | >= 1.9    |
+| aws        | >= 5.79.0 |
+| kubernetes | ~> 2.0    |
+| helm       | ~> 2.0    |
 
 ## Providers
 
 | Name       | Version |
 |------------|---------|
-| aws        | >= 5.0  |
-| kubernetes | >= 2.10 |
-| helm       | >= 2.5  |
-| random     | >= 3.0  |
-| tls        | >= 3.0  |
+| aws        | >= 5.79.0 |
+| kubernetes | ~> 2.0    |
+| helm       | ~> 2.0    |
+| random     | ~> 3.0    |
+| tls        | ~> 4.0    |
 
 ## Resources
 
