@@ -1,5 +1,7 @@
 terraform {
-  required_version = ">= 1.3"
+  # 1.9 is the first release that lets a variable validation block reference
+  # another variable, which the subnet validations in variables.tf rely on.
+  required_version = ">= 1.9"
 
   required_providers {
     aws = {

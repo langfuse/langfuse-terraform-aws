@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly run against freshly resolved providers, to catch provider
+    # releases that break the module even without any code change.
+    - cron: "23 6 * * 1"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fmt:
+    name: terraform fmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+      - run: terraform fmt -check -diff -recursive
+
+  # Discovered rather than hardcoded, so adding or removing an example does not
+  # need a matching change here.
+  discover:
+    name: Discover configurations
+    runs-on: ubuntu-latest
+    outputs:
+      dirs: ${{ steps.dirs.outputs.dirs }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: dirs
+        run: |
+          dirs=$(for d in . examples/*/; do
+            d=${d%/}
+            ls "$d"/*.tf >/dev/null 2>&1 && printf '%s\n' "$d"
+          done | jq -R . | jq -sc .)
+          echo "Validating: $dirs"
+          echo "dirs=$dirs" >> "$GITHUB_OUTPUT"
+
+  validate:
+    name: validate (${{ matrix.dir }}, TF ${{ matrix.terraform }})
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Oldest supported Terraform (required_version) and latest.
+        terraform: ["1.9.8", "latest"]
+        dir: ${{ fromJSON(needs.discover.outputs.dirs) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ matrix.terraform }}
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
