@@ -29,6 +29,11 @@ variable "certificate_arn" {
     condition     = !var.skip_dns_setup || var.certificate_arn != null
     error_message = "certificate_arn must be provided when skip_dns_setup is true."
   }
+
+  validation {
+    condition     = var.certificate_arn == null || var.skip_dns_setup
+    error_message = "certificate_arn is only used when skip_dns_setup is true; the module creates and validates its own certificate otherwise."
+  }
 }
 
 variable "vpc_cidr" {

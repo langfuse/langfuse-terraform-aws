@@ -338,6 +338,8 @@ The `clickhouse_instance_count` variable was removed: the number of EFS access p
 
 | Name                         | Description                                                                                                      | Type         | Default                                | Required |
 |------------------------------|------------------------------------------------------------------------------------------------------------------|--------------|----------------------------------------|:--------:|
+| skip_dns_setup              | Skip the Route53 zone, ACM certificate, DNS validation records and the ALB alias record, for externally managed DNS. Requires certificate_arn. | bool | false |    no    |
+| certificate_arn             | ARN of an existing, externally managed ACM certificate. Required when skip_dns_setup is true.                     | string       | null                                   |    no    |
 | name                         | Name prefix for resources                                                                                        | string       | "langfuse"                             |    no    |
 | domain                       | Domain name used for resource naming                                                                             | string       | n/a                                    |   yes    |
 | vpc_cidr                     | CIDR block for VPC                                                                                               | string       | "10.0.0.0/16"                          |    no    |
@@ -392,7 +394,9 @@ The `clickhouse_instance_count` variable was removed: the number of EFS access p
 | public_subnet_ids      | Public subnet IDs from VPC       |
 | bucket_name            | S3 bucket name for Langfuse      |
 | bucket_id              | S3 bucket ID for Langfuse        |
-| route53_nameservers    | Route53 zone nameservers         |
+| route53_nameservers    | Route53 zone nameservers (null when skip_dns_setup) |
+| load_balancer_dns_name | DNS name of the Langfuse ALB     |
+| load_balancer_zone_id  | Hosted zone ID of the ALB, for external Route53 alias records |
 
 ## Support
 
