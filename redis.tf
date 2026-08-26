@@ -68,6 +68,8 @@ resource "aws_elasticache_replication_group" "redis" {
   transit_encryption_enabled = true
   at_rest_encryption_enabled = var.redis_at_rest_encryption
   multi_az_enabled           = var.redis_multi_az
+  snapshot_retention_limit   = var.redis_snapshot_retention_limit
+  snapshot_window            = var.redis_snapshot_window
 
   log_delivery_configuration {
     destination      = aws_cloudwatch_log_group.redis.name

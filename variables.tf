@@ -285,6 +285,18 @@ variable "redis_multi_az" {
   default     = false
 }
 
+variable "redis_snapshot_retention_limit" {
+  description = "Days of automatic Redis snapshots to keep (0 disables backups)"
+  type        = number
+  default     = 1
+}
+
+variable "redis_snapshot_window" {
+  description = "Daily UTC window for the automatic Redis snapshot"
+  type        = string
+  default     = "03:00-04:00"
+}
+
 # Additional environment variables
 variable "additional_env" {
   description = "Additional environment variables to set on Langfuse pods"

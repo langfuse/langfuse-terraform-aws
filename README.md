@@ -377,6 +377,8 @@ The `clickhouse_instance_count` variable was removed: the number of EFS access p
 | ingress_inbound_cidrs        | Allowed CIDR blocks for ingress alb                                                                              | list(string) | ["0.0.0.0/0"]                          |    no    |
 | redis_at_rest_encryption     | At rest encryption enabled for the redis cluster                                                                 | bool         | false                                  |    no    |
 | redis_multi_az               | Multi availability zone enabled for the redis cluster                                                            | bool         | false                                  |    no    |
+| redis_snapshot_retention_limit | Days of automatic Redis snapshots to keep (0 disables backups)                                                  | number       | 1                                      |    no    |
+| redis_snapshot_window        | Daily UTC window for the automatic Redis snapshot                                                                | string       | "03:00-04:00"                          |    no    |
 
 ## Outputs
 
