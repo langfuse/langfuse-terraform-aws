@@ -11,7 +11,7 @@ This module aims to provide a production-ready, secure, and scalable deployment 
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.0.0"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.0.1"
 
   domain = "langfuse.example.com"
 
@@ -44,7 +44,7 @@ module "langfuse" {
 
   # Optional: Pin the Langfuse application version. Defaults to the latest
   # release at the time this module version was published.
-  app_version = "4.17.0"
+  app_version = "4.21.0"
   
   # Optional: Activate additional log tables in ClickHouse. Will increase EFS costs, but may aid in debugging.
   enable_clickhouse_log_tables = false  # Set to true to have additional logs.
@@ -153,7 +153,7 @@ If you already have a VPC and want to deploy Langfuse into it, you can provide t
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.0.0"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.0.1"
 
   domain = "langfuse.example.com"
 
@@ -229,7 +229,7 @@ For example, to increase ClickHouse Keeper resources:
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.0.0"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.0.1"
 
   domain = "langfuse.example.com"
 
@@ -261,7 +261,7 @@ The module deploys the Langfuse Helm chart v2 (`langfuse_helm_chart_version`), w
 ```hcl
 module "langfuse" {
   # ...
-  app_version = "4.17.0"
+  app_version = "4.21.0"
 }
 ```
 
