@@ -199,6 +199,14 @@ resource "kubernetes_namespace" "langfuse" {
   metadata {
     name = "langfuse"
   }
+
+  # Destroy the namespace before the PVs: this removes the PVCs the ClickHouse
+  # operator created, releasing the PVs so their deletion is not held back by
+  # the pv-protection finalizer.
+  depends_on = [
+    kubernetes_persistent_volume.clickhouse_data,
+    kubernetes_persistent_volume.clickhouse_keeper,
+  ]
 }
 
 resource "random_bytes" "salt" {
@@ -264,6 +272,8 @@ resource "helm_release" "langfuse" {
     kubernetes_service_account.aws_load_balancer_controller,
     helm_release.aws_load_balancer_controller,
     helm_release.clickhouse_operator,
+    module.vpc,
+    aws_efs_mount_target.eks,
   ]
 
   lifecycle {

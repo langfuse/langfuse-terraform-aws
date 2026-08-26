@@ -15,7 +15,7 @@ module "langfuse" {
   use_single_nat_gateway = false # Using a single NAT gateway decreases costs, but is less resilient
 
   # Optional: Configure the Kubernetes cluster
-  kubernetes_version         = "1.32"
+  kubernetes_version         = "1.36"
   fargate_profile_namespaces = ["kube-system", "langfuse", "default", "cert-manager", "clickhouse-operator-system"]
 
   # Optional: Configure the database instances
@@ -28,11 +28,11 @@ module "langfuse" {
   cache_instance_count = 2
 
   # Optional: Configure Langfuse Helm chart version
-  langfuse_helm_chart_version = "2.0.0"
+  langfuse_helm_chart_version = "2.0.2"
 
   # Optional: Pin the Langfuse application version (defaults to the latest
   # release at the time this module version was published)
-  app_version = "4.14.0"
+  app_version = "4.17.0"
 }
 
 provider "kubernetes" {
