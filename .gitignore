@@ -93,7 +93,8 @@ fabric.properties
 # Local .terraform directories
 **/.terraform/*
 
-examples/**/.terraform.lock.hcl
+# A shared module must not pin its consumers' provider versions.
+.terraform.lock.hcl
 
 # .tfstate files
 *.tfstate

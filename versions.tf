@@ -1,5 +1,7 @@
 terraform {
-  required_version = ">= 1.0"
+  # 1.9 is the first release that lets a variable validation block reference
+  # another variable, which the subnet validations in variables.tf rely on.
+  required_version = ">= 1.9"
 
   required_providers {
     aws = {
@@ -19,7 +21,7 @@ terraform {
 
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.0"
+      version = "~> 2.7" # OCI registry support is required for the ClickHouse operator chart
     }
 
     kubernetes = {
