@@ -30,8 +30,8 @@ module "langfuse" {
   use_single_nat_gateway = false  # Using a single NAT gateway decreases costs, but is less resilient
 
   # Optional: Configure the Kubernetes cluster
-  kubernetes_version = "1.32"
-  fargate_profile_namespaces = ["kube-system", "langfuse", "default"]
+  kubernetes_version = "1.36"
+  fargate_profile_namespaces = ["kube-system", "langfuse", "default", "cert-manager", "clickhouse-operator-system"]
 
   # Optional: Configure the database instances
   postgres_instance_count = 2
@@ -43,7 +43,11 @@ module "langfuse" {
   cache_instance_count = 2
 
   # Optional: Configure Langfuse Helm chart version
-  langfuse_helm_chart_version = "1.5.14"
+  langfuse_helm_chart_version = "2.0.2"
+
+  # Optional: Pin the Langfuse application version. Defaults to the latest
+  # release at the time this module version was published.
+  app_version = "4.17.0"
   
   # Optional: Activate additional log tables in ClickHouse. Will increase EFS costs, but may aid in debugging.
   enable_clickhouse_log_tables = false  # Set to true to have additional logs.
@@ -122,7 +126,17 @@ terraform apply
 
 ### Known issues
 
-Due to a race-condition between the Fargate Profile creation and the Kubernetes pod scheduling, on the initial system creation the CoreDNS containers, and the ClickHouse containers must be restarted:
+Two race conditions can leave pods stuck in `Pending` on the initial system creation:
+
+1. **CoreDNS**: due to a race between the Fargate Profile creation and Kubernetes pod scheduling, the CoreDNS pods may need to be restarted.
+2. **ClickHouse and Keeper**: the Fargate scheduler evaluates a pod's volumes at admission time. On the first install, the PVCs created by the ClickHouse operator may not yet be bound to the pre-created EFS volumes when the scheduler first looks, and the pods are rejected with an event like:
+
+   ```
+   Warning  FailedScheduling  fargate-scheduler  Pod not supported on Fargate: volumes not supported:
+   clickhouse-storage-volume not supported because: PVC clickhouse-storage-volume-langfuse-clickhouse-0-0-0 not bound
+   ```
+
+   The PVCs bind on their own moments later (`kubectl --namespace langfuse get pvc` shows them as `Bound`), but the Fargate scheduler does not reliably re-evaluate rejected pods. Deleting the pending pods makes the StatefulSet recreate them, and the fresh scheduling attempt succeeds.
 
 ```bash
 # Connect your kubectl to the EKS cluster
@@ -130,10 +144,10 @@ aws eks update-kubeconfig --name langfuse
 
 # Restart the CoreDNS and ClickHouse containers
 kubectl --namespace kube-system rollout restart deploy coredns
-kubectl --namespace langfuse delete pod langfuse-clickhouse-shard0-{0,1,2} langfuse-zookeeper-{0,1,2}
+kubectl --namespace langfuse delete pod langfuse-clickhouse-0-{0,1,2}-0 langfuse-keeper-{0,1,2}-0
 ```
 
-Afterward, your installation should become fully available.
+Both issues only occur on the first install, not in steady state. Afterward, your installation should become fully available.
 Navigate to your domain, e.g. langfuse.example.com, to access the Langfuse UI.
 
 ### Using an Existing VPC
@@ -237,27 +251,85 @@ This module creates a complete Langfuse stack with the following components:
 - Aurora PostgreSQL Serverless v2 cluster
 - ElastiCache Redis cluster
 - S3 bucket for storage
+- ClickHouse cluster managed by the official [ClickHouse Kubernetes operator](https://github.com/ClickHouse/clickhouse-operator) (including ClickHouse Keeper and cert-manager), or optionally an external ClickHouse such as ClickHouse Cloud
 - TLS certificates and Route53 DNS configuration
 - Required IAM roles and security groups
 - AWS Load Balancer Controller for ingress
 - EFS CSI Driver for persistent storage
 
+## Langfuse version
+
+The module deploys the Langfuse Helm chart v2 (`langfuse_helm_chart_version`), which ships [Langfuse v4](https://langfuse.com/docs/v4). The Langfuse application version is pinned explicitly through the `app_version` variable, which defaults to the latest Langfuse release at the time the module version was published. To upgrade Langfuse, set `app_version` to a newer [release](https://github.com/langfuse/langfuse/releases):
+
+```hcl
+module "langfuse" {
+  # ...
+  app_version = "4.17.0"
+}
+```
+
+## ClickHouse
+
+By default the Langfuse Helm chart v2 deploys a ClickHouse cluster into the EKS cluster through the official [ClickHouse Kubernetes operator](https://github.com/ClickHouse/clickhouse-operator) (`ClickHouseCluster` and `KeeperCluster` resources), backed by EFS persistent volumes. To support this, the module installs:
+
+- [cert-manager](https://cert-manager.io/) (required by the operator to issue its admission webhook certificates)
+- The ClickHouse operator (`oci://ghcr.io/clickhouse/clickhouse-operator-helm`)
+
+The deployment can be sized with the `clickhouse_replicas`, `clickhouse_cpu`, `clickhouse_memory`, `clickhouse_keeper_replicas`, `clickhouse_keeper_cpu`, and `clickhouse_keeper_memory` variables.
+
+### External ClickHouse (bring your own)
+
+To use an existing ClickHouse instead — for example [ClickHouse Cloud](https://clickhouse.com/cloud) — set `external_clickhouse`. The module then skips cert-manager, the operator, the in-cluster ClickHouse, and the entire EFS file system (which only exists for ClickHouse storage). See [examples/external-clickhouse](examples/external-clickhouse/external-clickhouse.tf) for a full example.
+
+```hcl
+module "langfuse" {
+  source = "github.com/langfuse/langfuse-terraform-aws"
+
+  domain = "langfuse.example.com"
+
+  external_clickhouse = {
+    host = "https://abc123.us-east-1.aws.clickhouse.cloud"
+    # Defaults: http_port = 8443, native_port = 9440, username = "default",
+    # database = "default", cluster_enabled = true, migration_ssl = true
+  }
+  external_clickhouse_password = var.clickhouse_password
+}
+```
+
+Set `cluster_enabled = false` for ClickHouse Cloud on Azure or for single-node deployments. Make sure the EKS cluster can reach the external ClickHouse (for ClickHouse Cloud, check the IP allowlist or use AWS PrivateLink).
+
+### Migrating from module versions <= 0.6.x
+
+Earlier versions of this module deployed Langfuse v3 with the Bitnami-based Helm chart v1, which ran ClickHouse (and ZooKeeper) as a Bitnami subchart. **Upgrading is a breaking change**: the operator-managed ClickHouse starts empty (new EFS access points and persistent volumes), and the Helm chart refuses a raw in-place `helm upgrade` that would replace leftover Bitnami volumes. Existing installations must migrate in two steps:
+
+1. Migrate the chart deployment (copying the ClickHouse data) following the [chart v1 → v2 migration guide](https://github.com/langfuse/langfuse-k8s/tree/main/examples/upgrade-v1-to-v2).
+2. Upgrade the application following the [Langfuse v3 → v4 upgrade guide](https://langfuse.com/self-hosting/upgrade/upgrade-guides/upgrade-v3-to-v4).
+
+The `clickhouse_instance_count` variable was removed: the number of EFS access points and persistent volumes now follows `clickhouse_replicas` and the new `clickhouse_keeper_replicas` variable. New installations are unaffected. If you need to stay on the Bitnami-based deployment for now, pin this module to `0.6.x`.
+
+## Teardown
+
+To remove all resources created by this module, run `terraform destroy` and confirm the plan.
+
+Expect the destroy to take 30-45 minutes: EKS deletes Fargate profiles one at a time (several minutes each), and Aurora, ElastiCache, EFS, and the VPC each add multi-minute deletions on top.
+A destroy that appears stuck is usually just working through these — do **not** delete resources manually (e.g. `aws eks delete-cluster`) while it runs; that breaks the remaining teardown.
+
 ## Requirements
 
-| Name       | Version |
-|------------|---------|
+| Name       | Version   |
+|------------|-----------|
 | terraform  | >= 1.9    |
-| aws        | >= 5.79.0 |
+| aws        | ~> 6.0    |
 | kubernetes | ~> 2.0    |
-| helm       | ~> 2.0    |
+| helm       | ~> 2.7    |
 
 ## Providers
 
-| Name       | Version |
-|------------|---------|
-| aws        | >= 5.79.0 |
+| Name       | Version   |
+|------------|-----------|
+| aws        | ~> 6.0    |
 | kubernetes | ~> 2.0    |
-| helm       | ~> 2.0    |
+| helm       | ~> 2.7    |
 | random     | ~> 3.0    |
 | tls        | ~> 4.0    |
 
@@ -281,39 +353,52 @@ This module creates a complete Langfuse stack with the following components:
 
 ## Inputs
 
-| Name                         | Description                                                                                                      | Type         | Default                                | Required |
-|------------------------------|------------------------------------------------------------------------------------------------------------------|--------------|----------------------------------------|:--------:|
-| name                         | Name prefix for resources                                                                                        | string       | "langfuse"                             |    no    |
-| domain                       | Domain name used for resource naming                                                                             | string       | n/a                                    |   yes    |
-| vpc_cidr                     | CIDR block for VPC                                                                                               | string       | "10.0.0.0/16"                          |    no    |
-| vpc_id                       | ID of an existing VPC to reuse                                                                                   | string       | null                                   |    no    |
-| private_subnet_ids           | List of private subnet IDs (required when using existing VPC)                                                    | list(string) | null                                   |    no    |
-| public_subnet_ids            | List of public subnet IDs (required when using existing VPC)                                                     | list(string) | null                                   |    no    |
-| private_route_table_ids      | List of private route table IDs (optional when using existing VPC, for S3 VPC Gateway endpoint)                   | list(string) | null                                   |    no    |
-| use_single_nat_gateway       | To use a single NAT Gateway (cheaper) or one per AZ (more resilient)                                             | bool         | true                                   |    no    |
-| kubernetes_version           | Kubernetes version for EKS cluster                                                                               | string       | "1.32"                                 |    no    |
-| use_encryption_key           | Whether to use an Encryption key for LLM API credential and integration credential store                         | bool         | true                                   |    no    |
-| fargate_profile_namespaces   | List of namespaces to create Fargate profiles for                                                                | list(string) | ["default", "langfuse", "kube-system"] |    no    |
-| postgres_instance_count      | Number of PostgreSQL instances                                                                                   | number       | 2                                      |    no    |
-| postgres_min_capacity        | Minimum ACU capacity for PostgreSQL Serverless v2                                                                | number       | 0.5                                    |    no    |
-| postgres_max_capacity        | Maximum ACU capacity for PostgreSQL Serverless v2                                                                | number       | 2.0                                    |    no    |
-| cache_node_type              | ElastiCache node type                                                                                            | string       | "cache.t4g.small"                      |    no    |
-| cache_instance_count         | Number of ElastiCache instances                                                                                  | number       | 1                                      |    no    |
-| langfuse_helm_chart_version  | Version of the Langfuse Helm chart to deploy                                                                     | string       | "1.5.14"                                |    no    |
-| langfuse_cpu                 | CPU allocation for Langfuse containers                                                                           | string       | "2"                                    |    no    |
-| langfuse_memory              | Memory allocation for Langfuse containers                                                                        | string       | "4Gi"                                  |    no    |
-| langfuse_web_replicas        | Number of replicas for Langfuse web container                                                                    | number       | 1                                      |    no    |
-| langfuse_worker_replicas     | Number of replicas for Langfuse worker container                                                                 | number       | 1                                      |    no    |
-| clickhouse_replicas          | Number of replicas of ClickHouse containers                                                                      | number       | 3                                      |    no    |
-| clickhouse_cpu               | CPU allocation for ClickHouse containers                                                                         | string       | "2"                                    |    no    |
-| clickhouse_memory            | Memory allocation for ClickHouse containers                                                                      | string       | "8Gi"                                  |    no    |
-| clickhouse_keeper_cpu        | CPU allocation for ClickHouse Keeper containers                                                                  | string       | "1"                                    |    no    |
-| clickhouse_keeper_memory     | Memory allocation for ClickHouse Keeper containers                                                               | string       | "2Gi"                                  |    no    |
-| enable_clickhouse_log_tables | Whether to enable Clickhouse logging tables. Having them active produces a high base-load on the EFS filesystem. | bool         | false                                  |    no    |
-| alb_scheme                   | ALB scheme                                                                                                       | string       | "internet-facing"                      |    no    |
-| ingress_inbound_cidrs        | Allowed CIDR blocks for ingress alb                                                                              | list(string) | ["0.0.0.0/0"]                          |    no    |
-| redis_at_rest_encryption     | At rest encryption enabled for the redis cluster                                                                 | bool         | false                                  |    no    |
-| redis_multi_az               | Multi availability zone enabled for the redis cluster                                                            | bool         | false                                  |    no    |
+| Name                              | Description                                                                                                                                              | Type         | Default                                                                              | Required |
+|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|--------------------------------------------------------------------------------------|:--------:|
+| helm_release_timeout              | Seconds to wait for the Langfuse Helm release to become ready                                                                                            | number       | 900                                                                                  |    no    |
+| postgres_version                  | PostgreSQL engine version to use                                                                                                                         | string       | "15.12"                                                                              |    no    |
+| additional_env                    | Additional environment variables to set on Langfuse pods                                                                                                 | list(object) | []                                                                                   |    no    |
+| name                              | Name prefix for resources                                                                                                                                | string       | "langfuse"                                                                           |    no    |
+| domain                            | Domain name used for resource naming                                                                                                                     | string       | n/a                                                                                  |   yes    |
+| vpc_cidr                          | CIDR block for VPC                                                                                                                                       | string       | "10.0.0.0/16"                                                                        |    no    |
+| vpc_id                            | ID of an existing VPC to reuse                                                                                                                           | string       | null                                                                                 |    no    |
+| private_subnet_ids                | List of private subnet IDs (required when using existing VPC)                                                                                            | list(string) | null                                                                                 |    no    |
+| public_subnet_ids                 | List of public subnet IDs (required when using existing VPC)                                                                                             | list(string) | null                                                                                 |    no    |
+| private_route_table_ids           | List of private route table IDs (optional when using existing VPC, for S3 VPC Gateway endpoint)                                                          | list(string) | null                                                                                 |    no    |
+| use_single_nat_gateway            | To use a single NAT Gateway (cheaper) or one per AZ (more resilient)                                                                                     | bool         | true                                                                                 |    no    |
+| kubernetes_version                | Kubernetes version for EKS cluster                                                                                                                       | string       | "1.32"                                                                               |    no    |
+| use_encryption_key                | Whether to use an Encryption key for LLM API credential and integration credential store                                                                 | bool         | true                                                                                 |    no    |
+| fargate_profile_namespaces        | List of namespaces to create Fargate profiles for                                                                                                        | list(string) | ["default", "langfuse", "kube-system", "cert-manager", "clickhouse-operator-system"] |    no    |
+| postgres_instance_count           | Number of PostgreSQL instances                                                                                                                           | number       | 2                                                                                    |    no    |
+| postgres_min_capacity             | Minimum ACU capacity for PostgreSQL Serverless v2                                                                                                        | number       | 0.5                                                                                  |    no    |
+| postgres_max_capacity             | Maximum ACU capacity for PostgreSQL Serverless v2                                                                                                        | number       | 2.0                                                                                  |    no    |
+| cache_node_type                   | ElastiCache node type                                                                                                                                    | string       | "cache.t4g.small"                                                                    |    no    |
+| cache_instance_count              | Number of ElastiCache instances                                                                                                                          | number       | 1                                                                                    |    no    |
+| langfuse_helm_chart_version       | Version of the Langfuse Helm chart to deploy                                                                                                             | string       | "2.0.0"                                                                              |    no    |
+| app_version                       | Langfuse application version (Docker image tag) to deploy. Defaults to the latest release at the time this module version was published.                 | string       | "4.14.0"                                                                             |    no    |
+| langfuse_cpu                      | CPU allocation for Langfuse containers                                                                                                                   | string       | "2"                                                                                  |    no    |
+| langfuse_memory                   | Memory allocation for Langfuse containers                                                                                                                | string       | "4Gi"                                                                                |    no    |
+| langfuse_web_replicas             | Number of replicas for Langfuse web container                                                                                                            | number       | 1                                                                                    |    no    |
+| langfuse_worker_replicas          | Number of replicas for Langfuse worker container                                                                                                         | number       | 1                                                                                    |    no    |
+| clickhouse_replicas               | Number of in-cluster ClickHouse replicas (single shard)                                                                                                  | number       | 3                                                                                    |    no    |
+| clickhouse_keeper_replicas        | Number of ClickHouse Keeper replicas (1, 3 or 5)                                                                                                         | number       | 3                                                                                    |    no    |
+| clickhouse_cpu                    | CPU allocation for ClickHouse containers                                                                                                                 | string       | "2"                                                                                  |    no    |
+| clickhouse_memory                 | Memory allocation for ClickHouse containers                                                                                                              | string       | "8Gi"                                                                                |    no    |
+| clickhouse_keeper_cpu             | CPU allocation for ClickHouse Keeper containers                                                                                                          | string       | "1"                                                                                  |    no    |
+| clickhouse_keeper_memory          | Memory allocation for ClickHouse Keeper containers                                                                                                       | string       | "2Gi"                                                                                |    no    |
+| clickhouse_storage_size           | Nominal persistent volume size per ClickHouse replica (EFS is elastic)                                                                                   | string       | "8Gi"                                                                                |    no    |
+| clickhouse_keeper_storage_size    | Nominal persistent volume size per Keeper replica (EFS is elastic)                                                                                       | string       | "8Gi"                                                                                |    no    |
+| clickhouse_operator_chart_version | Version of the ClickHouse operator Helm chart                                                                                                            | string       | "0.0.5"                                                                              |    no    |
+| cert_manager_chart_version        | Version of the cert-manager Helm chart                                                                                                                   | string       | "v1.20.2"                                                                            |    no    |
+| external_clickhouse               | Use an external ClickHouse (e.g. ClickHouse Cloud) instead of the in-cluster deployment. See [External ClickHouse](#external-clickhouse-bring-your-own). | object       | null                                                                                 |    no    |
+| external_clickhouse_password      | Password for the external ClickHouse user                                                                                                                | string       | ""                                                                                   |    no    |
+| enable_clickhouse_log_tables      | Whether to enable Clickhouse logging tables. Having them active produces a high base-load on the EFS filesystem.                                         | bool         | false                                                                                |    no    |
+| alb_scheme                        | ALB scheme                                                                                                                                               | string       | "internet-facing"                                                                    |    no    |
+| ingress_inbound_cidrs             | Allowed CIDR blocks for ingress alb                                                                                                                      | list(string) | ["0.0.0.0/0"]                                                                        |    no    |
+| redis_at_rest_encryption          | At rest encryption enabled for the redis cluster                                                                                                         | bool         | false                                                                                |    no    |
+| redis_multi_az                    | Multi availability zone enabled for the redis cluster                                                                                                    | bool         | false                                                                                |    no    |
+| redis_snapshot_retention_limit    | Days of automatic Redis snapshots to keep (0 disables backups)                                                                                           | number       | 1                                                                                    |    no    |
+| redis_snapshot_window             | Daily UTC window for the automatic Redis snapshot                                                                                                        | string       | "03:00-04:00"                                                                        |    no    |
 
 ## Outputs
 

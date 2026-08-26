@@ -5,8 +5,10 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.79.0"
+      source = "hashicorp/aws"
+      # Bounded deliberately: an open-ended constraint silently adopts the next
+      # provider major, which removes attributes this module uses.
+      version = "~> 6.0"
     }
 
     random = {
@@ -21,7 +23,7 @@ terraform {
 
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.0"
+      version = "~> 2.7" # OCI registry support is required for the ClickHouse operator chart
     }
 
     kubernetes = {

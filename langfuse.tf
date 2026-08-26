@@ -1,9 +1,9 @@
 locals {
   inbound_cidrs_csv = join(",", var.ingress_inbound_cidrs)
   langfuse_values   = <<EOT
-global:
-  defaultStorageClass: efs
 langfuse:
+  image:
+    tag: ${jsonencode(var.app_version)}
   salt:
     secretKeyRef:
       name: langfuse
@@ -43,29 +43,6 @@ postgresql:
     existingSecret: langfuse
     secretKeys:
       userPasswordKey: postgres-password
-clickhouse:
-  auth:
-    existingSecret: langfuse
-    existingSecretKey: clickhouse-password
-  replicaCount: ${var.clickhouse_replicas}
-  # Resource configuration for ClickHouse containers
-  resources:
-    limits:
-      cpu: "${var.clickhouse_cpu}"
-      memory: "${var.clickhouse_memory}"
-    requests:
-      cpu: "${var.clickhouse_cpu}"
-      memory: "${var.clickhouse_memory}"
-  # Resource configuration for ClickHouse Keeper
-  zookeeper:
-    replicaCount: ${var.clickhouse_replicas}
-    resources:
-      limits:
-        cpu: "${var.clickhouse_keeper_cpu}"
-        memory: "${var.clickhouse_keeper_memory}"
-      requests:
-        cpu: "${var.clickhouse_keeper_cpu}"
-        memory: "${var.clickhouse_keeper_memory}"
 redis:
   deploy: false
   host: ${aws_elasticache_replication_group.redis.primary_endpoint_address}
@@ -77,7 +54,7 @@ redis:
 s3:
   deploy: false
   bucket: ${aws_s3_bucket.langfuse.id}
-  region: ${data.aws_region.current.id}
+  region: ${data.aws_region.current.region}
   forcePathStyle: false
   eventUpload:
     prefix: "events/"
@@ -86,6 +63,63 @@ s3:
   mediaUpload:
     prefix: "media/"
 EOT
+
+  # In-cluster ClickHouse: the Langfuse Helm chart v2 renders ClickHouseCluster
+  # and KeeperCluster resources reconciled by the ClickHouse operator (see
+  # clickhouse.tf). Storage is backed by the statically provisioned EFS
+  # persistent volumes, so the sizes must match the PV capacities.
+  clickhouse_internal_values = !local.deploy_clickhouse ? "" : <<EOT
+clickhouse:
+  deploy: true
+  auth:
+    existingSecret: langfuse
+    existingSecretKey: clickhouse-password
+  cluster:
+    replicas: ${var.clickhouse_replicas}
+    storage:
+      size: ${var.clickhouse_storage_size}
+      className: efs
+    resources:
+      requests:
+        cpu: "${var.clickhouse_cpu}"
+        memory: "${var.clickhouse_memory}"
+      limits:
+        cpu: "${var.clickhouse_cpu}"
+        memory: "${var.clickhouse_memory}"
+  keeper:
+    replicas: ${var.clickhouse_keeper_replicas}
+    storage:
+      size: ${var.clickhouse_keeper_storage_size}
+      className: efs
+    resources:
+      requests:
+        cpu: "${var.clickhouse_keeper_cpu}"
+        memory: "${var.clickhouse_keeper_memory}"
+      limits:
+        cpu: "${var.clickhouse_keeper_cpu}"
+        memory: "${var.clickhouse_keeper_memory}"
+EOT
+
+  # External ClickHouse: skip the in-cluster deployment (and all EFS
+  # resources) and point Langfuse at the provided instance.
+  clickhouse_external_values = local.deploy_clickhouse ? "" : <<EOT
+clickhouse:
+  deploy: false
+  host: ${jsonencode(var.external_clickhouse.host)}
+  httpPort: ${var.external_clickhouse.http_port}
+  nativePort: ${var.external_clickhouse.native_port}
+  database: ${jsonencode(var.external_clickhouse.database)}
+  cluster:
+    enabled: ${var.external_clickhouse.cluster_enabled}
+  auth:
+    username: ${jsonencode(var.external_clickhouse.username)}
+    existingSecret: langfuse
+    existingSecretKey: clickhouse-password
+  migration:
+    ssl: ${var.external_clickhouse.migration_ssl}
+EOT
+
+  clickhouse_values = local.deploy_clickhouse ? local.clickhouse_internal_values : local.clickhouse_external_values
 
   additional_env_values = length(var.additional_env) == 0 ? "" : <<EOT
 langfuse:
@@ -118,6 +152,7 @@ langfuse:
     className: alb
     annotations:
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+      alb.ingress.kubernetes.io/certificate-arn: ${aws_acm_certificate_validation.cert.certificate_arn}
       alb.ingress.kubernetes.io/scheme: ${var.alb_scheme}
       alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
@@ -136,25 +171,27 @@ langfuse:
       key: encryption_key
 EOT
 
+  # The settings map is rendered into a config.d file by the ClickHouse
+  # operator; the "@remove" keys translate to the XML remove="1" attribute.
   # We could also consider excluding the following tables on opt-out:
-  # <query_log remove="1"/>
-  # <processors_profile_log remove="1"/>
-  # <part_log remove="1"/>
-  # <query_views_log remove="1"/>
-  # <asynchronous_insert_log remove="1"/>
-  # <query_metric_log remove="1"/>
-  # <error_log remove="1"/>
-  clickhouse_overwrite_values = var.enable_clickhouse_log_tables ? "" : <<EOT
+  # query_log, processors_profile_log, part_log, query_views_log,
+  # asynchronous_insert_log, query_metric_log, error_log
+  clickhouse_overwrite_values = var.enable_clickhouse_log_tables || !local.deploy_clickhouse ? "" : <<EOT
 clickhouse:
-  extraOverrides: |
-      <clickhouse>
-        <trace_log remove="1"/>
-        <text_log remove="1"/>
-        <opentelemetry_span_log remove="1"/>
-        <asynchronous_metric_log remove="1"/>
-        <metric_log remove="1"/>
-        <latency_log remove="1"/>
-      </clickhouse>
+  cluster:
+    settings:
+      trace_log:
+        "@remove": "1"
+      text_log:
+        "@remove": "1"
+      opentelemetry_span_log:
+        "@remove": "1"
+      asynchronous_metric_log:
+        "@remove": "1"
+      metric_log:
+        "@remove": "1"
+      latency_log:
+        "@remove": "1"
 EOT
 }
 
@@ -162,6 +199,14 @@ resource "kubernetes_namespace" "langfuse" {
   metadata {
     name = "langfuse"
   }
+
+  # Destroy the namespace before the PVs: this removes the PVCs the ClickHouse
+  # operator created, releasing the PVs so their deletion is not held back by
+  # the pv-protection finalizer.
+  depends_on = [
+    kubernetes_persistent_volume.clickhouse_data,
+    kubernetes_persistent_volume.clickhouse_keeper,
+  ]
 }
 
 resource "random_bytes" "salt" {
@@ -183,7 +228,7 @@ resource "random_bytes" "encryption_key" {
 resource "kubernetes_secret" "langfuse" {
   metadata {
     name      = "langfuse"
-    namespace = "langfuse"
+    namespace = kubernetes_namespace.langfuse.metadata[0].name
   }
 
   data = {
@@ -191,7 +236,7 @@ resource "kubernetes_secret" "langfuse" {
     "postgres-password"   = random_password.postgres_password.result
     "salt"                = random_bytes.salt.base64
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
-    "clickhouse-password" = random_password.clickhouse_password.result
+    "clickhouse-password" = local.deploy_clickhouse ? random_password.clickhouse_password.result : var.external_clickhouse_password
     "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
   }
 }
@@ -203,8 +248,14 @@ resource "helm_release" "langfuse" {
   chart      = "langfuse"
   namespace  = kubernetes_namespace.langfuse.metadata[0].name
 
+  # Fargate cold starts on EFS-backed volumes mean the default 300s is not
+  # enough: the release brings up ClickHouse and Keeper before the web pod can
+  # pass its probes, and the web pod may crash-restart once on the way.
+  timeout = var.helm_release_timeout
+
   values = compact([
     local.langfuse_values,
+    local.clickhouse_values,
     local.ingress_values,
     local.encryption_values,
     local.additional_env_values,
@@ -217,9 +268,19 @@ resource "helm_release" "langfuse" {
     aws_iam_role_policy.langfuse_s3_access,
     aws_eks_fargate_profile.namespaces,
     kubernetes_persistent_volume.clickhouse_data,
-    kubernetes_persistent_volume.clickhouse_zookeeper,
+    kubernetes_persistent_volume.clickhouse_keeper,
     kubernetes_service_account.aws_load_balancer_controller,
-    helm_release.aws_load_balancer_controller
+    helm_release.aws_load_balancer_controller,
+    helm_release.clickhouse_operator,
+    module.vpc,
+    aws_efs_mount_target.eks,
   ]
+
+  lifecycle {
+    precondition {
+      condition     = var.external_clickhouse == null || var.external_clickhouse_password != ""
+      error_message = "external_clickhouse_password must be set when external_clickhouse is configured."
+    }
+  }
 }
 

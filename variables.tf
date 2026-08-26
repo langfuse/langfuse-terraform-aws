@@ -57,7 +57,7 @@ variable "private_route_table_ids" {
 variable "kubernetes_version" {
   description = "Kubernetes version to use for the EKS cluster"
   type        = string
-  default     = "1.32"
+  default     = "1.36"
 }
 
 variable "use_encryption_key" {
@@ -108,12 +108,6 @@ variable "cache_instance_count" {
   default     = 2
 }
 
-variable "clickhouse_instance_count" {
-  description = "Number of ClickHouse instances used in the cluster"
-  type        = number
-  default     = 3
-}
-
 variable "fargate_profile_namespaces" {
   description = "List of Namespaces which are created with a fargate profile"
   type        = list(string)
@@ -121,6 +115,8 @@ variable "fargate_profile_namespaces" {
     "default",
     "langfuse",
     "kube-system",
+    "cert-manager",
+    "clickhouse-operator-system",
   ]
 }
 
@@ -133,7 +129,19 @@ variable "use_single_nat_gateway" {
 variable "langfuse_helm_chart_version" {
   description = "Version of the Langfuse Helm chart to deploy"
   type        = string
-  default     = "1.5.14"
+  default     = "2.0.2"
+}
+
+variable "app_version" {
+  description = "Langfuse application version (Docker image tag) to deploy, e.g. \"4.17.0\". Defaults to the latest Langfuse release at the time this module version was published. See https://github.com/langfuse/langfuse/releases."
+  type        = string
+  default     = "4.17.0"
+}
+
+variable "helm_release_timeout" {
+  description = "Seconds to wait for the Langfuse Helm release to become ready. Fargate cold starts, and bringing up ClickHouse and Keeper on EFS-backed volumes, take longer than the Helm provider's default 300s."
+  type        = number
+  default     = 900
 }
 
 # Resource configuration variables
@@ -170,12 +178,23 @@ variable "langfuse_worker_replicas" {
 }
 
 variable "clickhouse_replicas" {
-  description = "Number of replicas of ClickHouse containers"
+  description = "Number of ClickHouse replicas (single shard). The default of 3 provides a highly available setup. Only used when ClickHouse is deployed in-cluster."
   type        = number
   default     = 3
   validation {
-    condition     = var.clickhouse_replicas > 1
-    error_message = "There must be at least two clickhouse replicas for high availability."
+    condition     = var.clickhouse_replicas >= 1
+    error_message = "clickhouse_replicas must be at least 1."
+  }
+}
+
+variable "clickhouse_keeper_replicas" {
+  description = "Number of ClickHouse Keeper replicas. Must be 1, 3 or 5 to maintain quorum. Only used when ClickHouse is deployed in-cluster."
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = contains([1, 3, 5], var.clickhouse_keeper_replicas)
+    error_message = "clickhouse_keeper_replicas must be 1, 3 or 5."
   }
 }
 
@@ -203,6 +222,51 @@ variable "clickhouse_keeper_memory" {
   default     = "2Gi"
 }
 
+variable "clickhouse_storage_size" {
+  description = "Nominal size of the persistent volume of each ClickHouse replica. EFS is elastic, so this does not limit the actual storage."
+  type        = string
+  default     = "8Gi"
+}
+
+variable "clickhouse_keeper_storage_size" {
+  description = "Nominal size of the persistent volume of each ClickHouse Keeper replica. EFS is elastic, so this does not limit the actual storage."
+  type        = string
+  default     = "8Gi"
+}
+
+variable "clickhouse_operator_chart_version" {
+  description = "Version of the ClickHouse operator Helm chart (oci://ghcr.io/clickhouse/clickhouse-operator-helm). The default matches the version the Langfuse Helm chart is tested against."
+  type        = string
+  default     = "0.0.5"
+}
+
+variable "cert_manager_chart_version" {
+  description = "Version of the cert-manager Helm chart. cert-manager issues the certificates for the ClickHouse operator admission webhooks."
+  type        = string
+  default     = "v1.20.2"
+}
+
+variable "external_clickhouse" {
+  description = "Use an external ClickHouse deployment (e.g. ClickHouse Cloud) instead of deploying ClickHouse into the EKS cluster. Set external_clickhouse_password as well. Prefix the host with https:// to connect via HTTPS. The defaults match ClickHouse Cloud; set cluster_enabled = false for ClickHouse Cloud on Azure or single-node deployments. When set, no EFS file system is created."
+  type = object({
+    host            = string
+    http_port       = optional(number, 8443)
+    native_port     = optional(number, 9440)
+    username        = optional(string, "default")
+    database        = optional(string, "default")
+    cluster_enabled = optional(bool, true)
+    migration_ssl   = optional(bool, true)
+  })
+  default = null
+}
+
+variable "external_clickhouse_password" {
+  description = "Password for the external ClickHouse user. Required when external_clickhouse is set."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "alb_scheme" {
   description = "Scheme for the ALB (internal or internet-facing)"
   type        = string
@@ -218,13 +282,25 @@ variable "ingress_inbound_cidrs" {
 variable "redis_at_rest_encryption" {
   description = "Whether at-rest encryption is enabled for the Redis cluster"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "redis_multi_az" {
   description = "Whether Multi-AZ is enabled for the Redis cluster"
   type        = bool
   default     = false
+}
+
+variable "redis_snapshot_retention_limit" {
+  description = "Days of automatic Redis snapshots to keep (0 disables backups)"
+  type        = number
+  default     = 1
+}
+
+variable "redis_snapshot_window" {
+  description = "Daily UTC window for the automatic Redis snapshot"
+  type        = string
+  default     = "03:00-04:00"
 }
 
 # Additional environment variables
