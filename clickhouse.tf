@@ -38,6 +38,7 @@ EOT
 
   depends_on = [
     aws_eks_fargate_profile.namespaces,
+    aws_eks_addon.coredns,
   ]
 }
 

@@ -330,5 +330,8 @@ resource "helm_release" "aws_load_balancer_controller" {
     kubernetes_service_account.aws_load_balancer_controller,
     aws_iam_role.aws_load_balancer_controller,
     aws_eks_fargate_profile.namespaces,
+    # Without cluster DNS the controller cannot resolve sts.<region>.amazonaws.com
+    # and fails to assume its IRSA role.
+    aws_eks_addon.coredns,
   ]
 }
