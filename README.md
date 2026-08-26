@@ -2,9 +2,6 @@
 
 # AWS Langfuse Terraform module
 
-> This module is a pre-release version and its interface may change.
-> Please review the changelog between each release and create a GitHub issue for any problems or feature requests.
-
 This repository contains a Terraform module for deploying [Langfuse](https://langfuse.com/) - the open-source LLM observability platform - on AWS.
 This module aims to provide a production-ready, secure, and scalable deployment using managed services whenever possible.
 
@@ -14,7 +11,7 @@ This module aims to provide a production-ready, secure, and scalable deployment 
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.6.2"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.0.0"
 
   domain = "langfuse.example.com"
 
@@ -156,7 +153,7 @@ If you already have a VPC and want to deploy Langfuse into it, you can provide t
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.6.2"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.0.0"
 
   domain = "langfuse.example.com"
 
@@ -232,7 +229,7 @@ For example, to increase ClickHouse Keeper resources:
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=0.6.2"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.0.0"
 
   domain = "langfuse.example.com"
 
