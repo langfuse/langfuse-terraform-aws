@@ -54,7 +54,7 @@ redis:
 s3:
   deploy: false
   bucket: ${aws_s3_bucket.langfuse.id}
-  region: ${data.aws_region.current.id}
+  region: ${data.aws_region.current.region}
   forcePathStyle: false
   eventUpload:
     prefix: "events/"
@@ -152,6 +152,7 @@ langfuse:
     className: alb
     annotations:
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+      alb.ingress.kubernetes.io/certificate-arn: ${aws_acm_certificate_validation.cert.certificate_arn}
       alb.ingress.kubernetes.io/scheme: ${var.alb_scheme}
       alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/ssl-redirect: '443'

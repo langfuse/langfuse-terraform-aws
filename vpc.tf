@@ -94,7 +94,7 @@ resource "aws_ec2_tag" "public_subnet_cluster" {
 # VPC Endpoints for AWS services
 resource "aws_vpc_endpoint" "sts" {
   vpc_id             = local.vpc_id
-  service_name       = "com.amazonaws.${data.aws_region.current.name}.sts"
+  service_name       = "com.amazonaws.${data.aws_region.current.region}.sts"
   vpc_endpoint_type  = "Interface"
   subnet_ids         = local.private_subnets
   security_group_ids = [aws_security_group.vpc_endpoints.id]
@@ -110,7 +110,7 @@ resource "aws_vpc_endpoint" "s3" {
   count = local.private_route_table_ids != null ? 1 : 0
 
   vpc_id            = local.vpc_id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = local.private_route_table_ids
 

@@ -88,6 +88,40 @@ resource "aws_eks_fargate_profile" "namespaces" {
   }
 }
 
+# EKS installs CoreDNS configured for EC2 infrastructure, so on a Fargate-only
+# cluster its pods stay Pending on the eks.amazonaws.com/compute-type=fargate
+# taint. Nothing in the cluster resolves DNS until that is fixed: the AWS Load
+# Balancer Controller cannot reach STS, and the Langfuse pods cannot resolve
+# the database hostnames.
+#
+# Managing CoreDNS as an add-on lets EKS render the deployment for Fargate
+# itself, which is more durable than patching the annotation of an
+# EKS-managed object after the fact. The kube-system Fargate profile selects
+# on the namespace alone, so it already matches the CoreDNS pods.
+resource "aws_eks_addon" "coredns" {
+  cluster_name = aws_eks_cluster.langfuse.name
+  addon_name   = "coredns"
+
+  configuration_values = jsonencode({
+    computeType = "Fargate"
+  })
+
+  # CoreDNS is pre-installed by EKS, so the add-on adopts an object Terraform
+  # does not own.
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  # The add-on only reaches ACTIVE once its pods schedule, which needs the
+  # profile to exist first.
+  depends_on = [
+    aws_eks_fargate_profile.namespaces,
+  ]
+
+  tags = {
+    Name = "${local.tag_name} CoreDNS"
+  }
+}
+
 resource "aws_security_group" "eks" {
   name        = "${var.name}-eks"
   description = "Security group for Langfuse EKS cluster"

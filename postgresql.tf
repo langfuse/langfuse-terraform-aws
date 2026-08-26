@@ -68,12 +68,6 @@ resource "aws_rds_cluster" "postgres" {
   }
 }
 
-resource "aws_rds_cluster_parameter_group" "postgres" {
-  name        = "${var.name}-postgres-parameter-group"
-  family      = "aurora-postgresql15"
-  description = "Parameter group for ${local.tag_name} Postgres"
-}
-
 resource "aws_rds_cluster_instance" "postgres" {
   count               = var.postgres_instance_count
   identifier          = "${var.name}-postgres-${count.index + 1}"
