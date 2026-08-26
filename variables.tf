@@ -139,7 +139,7 @@ variable "app_version" {
 }
 
 variable "helm_release_timeout" {
-  description = "Seconds to wait for the Langfuse Helm release to become ready. Fargate + EFS cold starts and the 60s ClickHouse ZooKeeper initialization cycle require more time than Helm's default 300s."
+  description = "Seconds to wait for the Langfuse Helm release to become ready. Fargate cold starts, and bringing up ClickHouse and Keeper on EFS-backed volumes, take longer than the Helm provider's default 300s."
   type        = number
   default     = 900
 }
