@@ -31,6 +31,11 @@ crds:
 EOT
   ]
 
+  # Every Fargate pod is a cold micro-VM with no local image cache, so the
+  # three cert-manager deployments regularly need longer than the provider's
+  # default 300s to all report ready.
+  timeout = 600
+
   depends_on = [
     aws_eks_fargate_profile.namespaces,
   ]
@@ -49,6 +54,11 @@ resource "helm_release" "clickhouse_operator" {
   version          = var.clickhouse_operator_chart_version
   namespace        = "clickhouse-operator-system"
   create_namespace = true
+
+  # Same Fargate cold start, and the operator only becomes ready once
+  # cert-manager has issued its webhook certificate. The Langfuse chart below
+  # needs the operator's CRDs and webhook to already exist.
+  timeout = 600
 
   depends_on = [
     helm_release.cert_manager,

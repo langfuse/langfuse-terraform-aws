@@ -299,20 +299,20 @@ The `clickhouse_instance_count` variable was removed: the number of EFS access p
 
 ## Requirements
 
-| Name       | Version |
-|------------|---------|
+| Name       | Version   |
+|------------|-----------|
 | terraform  | >= 1.9    |
 | aws        | >= 5.79.0 |
 | kubernetes | ~> 2.0    |
-| helm       | ~> 2.0    |
+| helm       | ~> 2.7    |
 
 ## Providers
 
-| Name       | Version |
-|------------|---------|
+| Name       | Version   |
+|------------|-----------|
 | aws        | >= 5.79.0 |
 | kubernetes | ~> 2.0    |
-| helm       | ~> 2.0    |
+| helm       | ~> 2.7    |
 | random     | ~> 3.0    |
 | tls        | ~> 4.0    |
 
