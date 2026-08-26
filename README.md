@@ -302,7 +302,7 @@ The `clickhouse_instance_count` variable was removed: the number of EFS access p
 | Name       | Version   |
 |------------|-----------|
 | terraform  | >= 1.9    |
-| aws        | >= 5.79.0 |
+| aws        | ~> 6.0    |
 | kubernetes | ~> 2.0    |
 | helm       | ~> 2.7    |
 
@@ -310,7 +310,7 @@ The `clickhouse_instance_count` variable was removed: the number of EFS access p
 
 | Name       | Version   |
 |------------|-----------|
-| aws        | >= 5.79.0 |
+| aws        | ~> 6.0    |
 | kubernetes | ~> 2.0    |
 | helm       | ~> 2.7    |
 | random     | ~> 3.0    |

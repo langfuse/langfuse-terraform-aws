@@ -5,8 +5,10 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.79.0"
+      source = "hashicorp/aws"
+      # Bounded deliberately: an open-ended constraint silently adopts the next
+      # provider major, which removes attributes this module uses.
+      version = "~> 6.0"
     }
 
     random = {

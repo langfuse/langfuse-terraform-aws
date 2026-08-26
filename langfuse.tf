@@ -54,7 +54,7 @@ redis:
 s3:
   deploy: false
   bucket: ${aws_s3_bucket.langfuse.id}
-  region: ${data.aws_region.current.id}
+  region: ${data.aws_region.current.region}
   forcePathStyle: false
   eventUpload:
     prefix: "events/"
