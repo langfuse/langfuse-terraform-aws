@@ -21,7 +21,7 @@ terraform {
 
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.0"
+      version = "~> 2.7" # OCI registry support is required for the ClickHouse operator chart
     }
 
     kubernetes = {
