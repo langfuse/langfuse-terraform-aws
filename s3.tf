@@ -59,7 +59,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "langfuse" {
 
 # Create IRSA role for Langfuse service account
 resource "aws_iam_role" "langfuse_irsa" {
-  name = "langfuse"
+  name = "${var.name}-irsa"
   path = "/kubernetes/"
 
   assume_role_policy = jsonencode({

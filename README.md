@@ -338,6 +338,9 @@ The `clickhouse_instance_count` variable was removed: the number of EFS access p
 
 | Name                         | Description                                                                                                      | Type         | Default                                | Required |
 |------------------------------|------------------------------------------------------------------------------------------------------------------|--------------|----------------------------------------|:--------:|
+| helm_release_timeout        | Seconds to wait for the Langfuse Helm release to become ready                                                    | number       | 900                                    |    no    |
+| postgres_version            | PostgreSQL engine version to use                                                                                 | string       | "15.12"                                |    no    |
+| additional_env              | Additional environment variables to set on Langfuse pods                                                         | list(object) | []                                     |    no    |
 | name                         | Name prefix for resources                                                                                        | string       | "langfuse"                             |    no    |
 | domain                       | Domain name used for resource naming                                                                             | string       | n/a                                    |   yes    |
 | vpc_cidr                     | CIDR block for VPC                                                                                               | string       | "10.0.0.0/16"                          |    no    |
