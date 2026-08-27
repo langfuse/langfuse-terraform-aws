@@ -8,7 +8,12 @@ terraform {
       source = "hashicorp/aws"
       # Bounded deliberately: an open-ended constraint silently adopts the next
       # provider major, which removes attributes this module uses.
-      version = "~> 6.0"
+      version = ">= 6.30, < 7.0"
+    }
+
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.8"
     }
 
     random = {
