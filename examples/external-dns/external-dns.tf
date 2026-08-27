@@ -15,7 +15,7 @@ module "langfuse" {
   certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/00000000-0000-0000-0000-000000000000"
 
   # Optional: pin the Langfuse application version
-  app_version = "4.19.0"
+  app_version = "4.21.0"
 }
 
 output "load_balancer_dns_name" {
