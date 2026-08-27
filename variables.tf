@@ -396,17 +396,6 @@ variable "code_based_eval_executor_lambda_settings" {
   }
 }
 
-variable "code_eval_execution_queue_shard_count" {
-  description = "Shard count for the code eval execution queue. Do not decrease this after enabling code evals."
-  type        = number
-  default     = 1
-
-  validation {
-    condition     = var.code_eval_execution_queue_shard_count > 0 && floor(var.code_eval_execution_queue_shard_count) == var.code_eval_execution_queue_shard_count
-    error_message = "code_eval_execution_queue_shard_count must be a positive integer."
-  }
-}
-
 variable "code_eval_execution_worker_concurrency" {
   description = "Code eval execution queue processing concurrency for each Langfuse worker pod."
   type        = number
