@@ -21,6 +21,8 @@ locals {
   }
 }
 
+data "aws_partition" "current" {}
+
 module "code_based_eval_executor_vpc" {
   count = var.enable_code_based_eval_executors ? 1 : 0
 
@@ -35,6 +37,10 @@ module "code_based_eval_executor_vpc" {
 
   create_igw         = false
   enable_nat_gateway = false
+  # AmazonProvidedDNS bypasses security groups and can otherwise be used to
+  # exfiltrate data through attacker-controlled DNS names.
+  enable_dns_support   = false
+  enable_dns_hostnames = false
 
   enable_flow_log                                 = true
   create_flow_log_cloudwatch_iam_role             = true
@@ -62,6 +68,19 @@ resource "archive_file" "code_based_eval_executor" {
     content  = file(each.value.source_path)
     filename = each.value.filename
   }
+}
+
+resource "aws_s3_object" "code_based_eval_executor" {
+  for_each = var.enable_code_based_eval_executors ? local.code_based_eval_executor_lambda_configs : {}
+
+  bucket      = aws_s3_bucket.langfuse.id
+  key         = "code-eval-runners/${each.key}.zip"
+  source      = archive_file.code_based_eval_executor[each.key].output_path
+  source_hash = archive_file.code_based_eval_executor[each.key].output_base64sha256
+
+  # Persist deployment packages outside the plan/apply runner so Lambda can be
+  # recreated from a saved plan even when its archive resource is unchanged.
+  depends_on = [aws_s3_bucket_versioning.langfuse]
 }
 
 resource "aws_security_group" "code_based_eval_executor_lambda" {
@@ -150,8 +169,10 @@ resource "aws_lambda_function" "code_based_eval_executor" {
   handler       = each.value.handler
   role          = aws_iam_role.code_based_eval_executor_lambda[0].arn
 
-  filename         = archive_file.code_based_eval_executor[each.key].output_path
-  source_code_hash = archive_file.code_based_eval_executor[each.key].output_base64sha256
+  s3_bucket         = aws_s3_object.code_based_eval_executor[each.key].bucket
+  s3_key            = aws_s3_object.code_based_eval_executor[each.key].key
+  s3_object_version = aws_s3_object.code_based_eval_executor[each.key].version_id
+  source_code_hash  = archive_file.code_based_eval_executor[each.key].output_base64sha256
 
   architectures                  = ["arm64"]
   memory_size                    = var.code_based_eval_executor_lambda_settings[each.key].memory_size
@@ -175,6 +196,13 @@ resource "aws_lambda_function" "code_based_eval_executor" {
     aws_cloudwatch_log_group.code_based_eval_executor,
     aws_iam_role_policy.code_based_eval_executor_lambda,
   ]
+
+  lifecycle {
+    precondition {
+      condition     = data.aws_partition.current.partition == "aws" && data.aws_region.current.region != "ap-southeast-6"
+      error_message = "AWS Lambda tenant isolation is supported only in commercial AWS regions except Asia Pacific (New Zealand)."
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "code_based_eval_executor_lambda_deny_function_code_vpc_eni_management" {

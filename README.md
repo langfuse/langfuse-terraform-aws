@@ -227,9 +227,11 @@ These defaults provide a good starting point for production workloads, but you c
 
 ### Code-Based Evals
 
-Set `enable_code_based_eval_executors = true` to enable Python and TypeScript code evaluators. The module creates tenant-isolated Lambda functions, an isolated VPC with no internet route or security-group egress, CloudWatch logs, and the least-privilege IAM permissions required for Langfuse to invoke the functions. It also configures the Langfuse web and worker deployments to dispatch and process code eval jobs.
+Set `enable_code_based_eval_executors = true` to enable Python and TypeScript code evaluators. The module creates tenant-isolated Lambda functions, an isolated VPC with DNS resolution disabled and no internet route or security-group egress, versioned S3 deployment packages, CloudWatch logs, and the least-privilege IAM permissions required for Langfuse to invoke the functions. It also configures the Langfuse web and worker deployments to dispatch and process code eval jobs.
 
 The Lambda handlers are copied from the canonical [Langfuse code eval runners](https://github.com/langfuse/langfuse/tree/main/scripts/code-eval-runners). The executor VPC is separate from the Langfuse VPC so evaluator code cannot access Langfuse databases, caches, pods, or the public internet.
+
+AWS Lambda tenant isolation is available in commercial AWS regions except Asia Pacific (New Zealand). It is not available in AWS GovCloud or China regions. When code-based evals are enabled, `name` must be at most 32 characters to fit Lambda and IAM naming limits.
 
 ### Customizing Resources
 
@@ -414,7 +416,6 @@ A destroy that appears stuck is usually just working through these — do **not*
 | enable_code_based_eval_executors  | Create isolated Lambda executors and configure Langfuse code evals                                                                                        | bool         | false                                                                                |    no    |
 | code_based_eval_vpc_cidr          | CIDR for the dedicated code eval executor VPC                                                                                                             | string       | "10.1.0.0/24"                                                                        |    no    |
 | code_based_eval_executor_lambda_settings | Per-runtime Lambda memory, timeout, and reserved concurrency settings                                                                             | object       | See `variables.tf`                                                                   |    no    |
-| code_eval_local_timeout_ms        | Timeout for code eval execution requests                                                                                                                  | number       | 2000                                                                                 |    no    |
 | code_eval_execution_queue_shard_count | Code eval queue shard count; do not decrease after enabling                                                                                          | number       | 1                                                                                    |    no    |
 | code_eval_execution_worker_concurrency | Code eval queue concurrency per worker                                                                                                               | number       | 5                                                                                    |    no    |
 

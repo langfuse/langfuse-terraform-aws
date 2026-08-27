@@ -131,8 +131,6 @@ langfuse:
       value: ${jsonencode(local.code_based_eval_executor_lambda_names.python)}
     - name: LANGFUSE_CODE_EVAL_AWS_LAMBDA_NODE_FUNCTION_NAME
       value: ${jsonencode(local.code_based_eval_executor_lambda_names.node)}
-    - name: LANGFUSE_CODE_EVAL_LOCAL_TIMEOUT_MS
-      value: ${jsonencode(tostring(var.code_eval_local_timeout_ms))}
     - name: LANGFUSE_CODE_EVAL_EXECUTION_QUEUE_SHARD_COUNT
       value: ${jsonencode(tostring(var.code_eval_execution_queue_shard_count))}
 %{endif~}

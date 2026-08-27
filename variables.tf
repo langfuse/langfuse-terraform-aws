@@ -2,6 +2,11 @@ variable "name" {
   description = "Name prefix for resources"
   type        = string
   default     = "langfuse"
+
+  validation {
+    condition     = !var.enable_code_based_eval_executors || length(var.name) <= 32
+    error_message = "name must be at most 32 characters when code-based eval executors are enabled."
+  }
 }
 
 variable "domain" {
@@ -342,8 +347,12 @@ variable "code_based_eval_vpc_cidr" {
   default     = "10.1.0.0/24"
 
   validation {
-    condition     = can(cidrsubnet(var.code_based_eval_vpc_cidr, 2, 2))
-    error_message = "code_based_eval_vpc_cidr must be a valid CIDR block with room for at least three subnets."
+    condition = (
+      can(cidrnetmask(var.code_based_eval_vpc_cidr)) &&
+      can(cidrsubnet(var.code_based_eval_vpc_cidr, 2, 2)) &&
+      can(regex("/(?:[0-9]|1[0-9]|2[0-6])$", var.code_based_eval_vpc_cidr))
+    )
+    error_message = "code_based_eval_vpc_cidr must be a valid IPv4 CIDR with a /26 or shorter prefix so it can contain three AWS-valid subnets."
   }
 }
 
@@ -384,17 +393,6 @@ variable "code_based_eval_executor_lambda_settings" {
       settings.reserved_concurrent_executions >= 0
     ])
     error_message = "Each executor must use 128-10240 MB memory, a 1-900 second timeout, and non-negative reserved concurrency."
-  }
-}
-
-variable "code_eval_local_timeout_ms" {
-  description = "Timeout in milliseconds for Langfuse code eval execution requests."
-  type        = number
-  default     = 2000
-
-  validation {
-    condition     = var.code_eval_local_timeout_ms > 0 && floor(var.code_eval_local_timeout_ms) == var.code_eval_local_timeout_ms
-    error_message = "code_eval_local_timeout_ms must be a positive integer."
   }
 }
 
