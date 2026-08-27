@@ -152,11 +152,11 @@ langfuse:
     className: alb
     annotations:
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-      alb.ingress.kubernetes.io/certificate-arn: ${aws_acm_certificate_validation.cert.certificate_arn}
       alb.ingress.kubernetes.io/scheme: ${var.alb_scheme}
       alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
       alb.ingress.kubernetes.io/inbound-cidrs: ${local.inbound_cidrs_csv}
+      alb.ingress.kubernetes.io/certificate-arn: ${local.certificate_arn}
     hosts:
     - host: ${var.domain}
       paths:

@@ -355,6 +355,8 @@ A destroy that appears stuck is usually just working through these — do **not*
 | helm_release_timeout              | Seconds to wait for the Langfuse Helm release to become ready                                                                                            | number       | 900                                                                                  |    no    |
 | postgres_version                  | PostgreSQL engine version to use                                                                                                                         | string       | "15.12"                                                                              |    no    |
 | additional_env                    | Additional environment variables to set on Langfuse pods                                                                                                 | list(object) | []                                                                                   |    no    |
+| skip_dns_setup                    | Skip the Route53 zone, ACM certificate, DNS validation records and the ALB alias record, for externally managed DNS. Requires certificate_arn.           | bool         | false                                                                                |    no    |
+| certificate_arn                   | ARN of an existing, externally managed ACM certificate. Required when skip_dns_setup is true.                                                            | string       | null                                                                                 |    no    |
 | name                              | Name prefix for resources                                                                                                                                | string       | "langfuse"                                                                           |    no    |
 | domain                            | Domain name used for resource naming                                                                                                                     | string       | n/a                                                                                  |   yes    |
 | vpc_cidr                          | CIDR block for VPC                                                                                                                                       | string       | "10.0.0.0/16"                                                                        |    no    |
@@ -409,7 +411,9 @@ A destroy that appears stuck is usually just working through these — do **not*
 | public_subnet_ids      | Public subnet IDs from VPC       |
 | bucket_name            | S3 bucket name for Langfuse      |
 | bucket_id              | S3 bucket ID for Langfuse        |
-| route53_nameservers    | Route53 zone nameservers         |
+| route53_nameservers    | Route53 zone nameservers (null when skip_dns_setup) |
+| load_balancer_dns_name | DNS name of the Langfuse ALB     |
+| load_balancer_zone_id  | Hosted zone ID of the ALB, for external Route53 alias records |
 
 ## Support
 

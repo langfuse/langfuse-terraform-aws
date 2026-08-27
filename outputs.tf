@@ -21,8 +21,18 @@ output "cluster_token" {
 }
 
 output "route53_nameservers" {
-  description = "Nameserver for the Route53 zone"
-  value       = aws_route53_zone.zone.name_servers
+  description = "Nameservers for the Route53 zone (null when skip_dns_setup is true)"
+  value       = var.skip_dns_setup ? null : aws_route53_zone.zone[0].name_servers
+}
+
+output "load_balancer_dns_name" {
+  description = "DNS name of the ALB created for Langfuse"
+  value       = data.aws_lb.ingress.dns_name
+}
+
+output "load_balancer_zone_id" {
+  description = "Hosted zone ID of the ALB (for use in Route53 alias records)"
+  value       = data.aws_lb.ingress.zone_id
 }
 
 output "private_subnet_ids" {

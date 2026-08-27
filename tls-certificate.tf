@@ -1,5 +1,6 @@
-# ACM Certificate for the domain
+# ACM Certificate for the domain (skipped when skip_dns_setup is true)
 resource "aws_acm_certificate" "cert" {
+  count             = var.skip_dns_setup ? 0 : 1
   domain_name       = var.domain
   validation_method = "DNS"
 
@@ -12,19 +13,20 @@ resource "aws_acm_certificate" "cert" {
   }
 }
 
-# Create Route53 zone for the domain
+# Create Route53 zone for the domain (skipped when skip_dns_setup is true)
 resource "aws_route53_zone" "zone" {
-  name = var.domain
+  count = var.skip_dns_setup ? 0 : 1
+  name  = var.domain
 
   tags = {
     Name = local.tag_name
   }
 }
 
-# Create DNS records for certificate validation
+# Create DNS records for certificate validation (skipped when skip_dns_setup is true)
 resource "aws_route53_record" "cert_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.domain_name => {
+  for_each = var.skip_dns_setup ? {} : {
+    for dvo in aws_acm_certificate.cert[0].domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
@@ -36,12 +38,13 @@ resource "aws_route53_record" "cert_validation" {
   records         = [each.value.record]
   ttl             = 60
   type            = each.value.type
-  zone_id         = aws_route53_zone.zone.zone_id
+  zone_id         = aws_route53_zone.zone[0].zone_id
 }
 
-# Certificate validation
+# Certificate validation (skipped when skip_dns_setup is true)
 resource "aws_acm_certificate_validation" "cert" {
-  certificate_arn         = aws_acm_certificate.cert.arn
+  count                   = var.skip_dns_setup ? 0 : 1
+  certificate_arn         = aws_acm_certificate.cert[0].arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
@@ -59,9 +62,10 @@ data "aws_lb" "ingress" {
   ]
 }
 
-# Create Route53 record for the ALB
+# Create Route53 record for the ALB (skipped when skip_dns_setup is true)
 resource "aws_route53_record" "langfuse" {
-  zone_id = aws_route53_zone.zone.zone_id
+  count   = var.skip_dns_setup ? 0 : 1
+  zone_id = aws_route53_zone.zone[0].zone_id
   name    = var.domain
   type    = "A"
 
