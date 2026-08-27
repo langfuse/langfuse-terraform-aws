@@ -55,6 +55,8 @@ resource "archive_file" "code_based_eval_executor" {
 
   type        = "zip"
   output_path = "${path.root}/.terraform/${var.name}_code_based_eval_executor_${each.key}.zip"
+  # Keep Lambda package hashes stable across caller operating systems.
+  output_file_mode = "0666"
 
   source {
     content  = file(each.value.source_path)
@@ -221,4 +223,8 @@ resource "aws_iam_role_policy" "langfuse_code_based_eval_executor_invoke" {
       ]
     }]
   })
+
+  # Prevent invocation until the execution role's defense-in-depth deny policy
+  # is installed.
+  depends_on = [aws_iam_role_policy.code_based_eval_executor_lambda_deny_function_code_vpc_eni_management]
 }
