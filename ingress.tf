@@ -20,7 +20,7 @@ data "aws_iam_policy_document" "aws_load_balancer_controller_assume_role_policy"
 
 resource "aws_iam_role" "aws_load_balancer_controller" {
   assume_role_policy = data.aws_iam_policy_document.aws_load_balancer_controller_assume_role_policy.json
-  name               = "aws-load-balancer-controller"
+  name               = "${var.name}-alb-controller"
 
   tags = {
     Name = "${local.tag_name} ALB"
@@ -28,7 +28,7 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
 }
 
 resource "aws_iam_policy" "aws_load_balancer_controller" {
-  name        = "AWSLoadBalancerControllerIAMPolicy"
+  name        = "${var.name}-alb-controller"
   description = "IAM policy for AWS Load Balancer Controller"
 
   policy = jsonencode({

@@ -84,7 +84,7 @@ variable "private_route_table_ids" {
 variable "kubernetes_version" {
   description = "Kubernetes version to use for the EKS cluster"
   type        = string
-  default     = "1.32"
+  default     = "1.36"
 }
 
 variable "use_encryption_key" {
@@ -156,13 +156,19 @@ variable "use_single_nat_gateway" {
 variable "langfuse_helm_chart_version" {
   description = "Version of the Langfuse Helm chart to deploy"
   type        = string
-  default     = "2.0.0"
+  default     = "2.0.2"
 }
 
 variable "app_version" {
-  description = "Langfuse application version (Docker image tag) to deploy, e.g. \"4.14.0\". Defaults to the latest Langfuse release at the time this module version was published. See https://github.com/langfuse/langfuse/releases."
+  description = "Langfuse application version (Docker image tag) to deploy, e.g. \"4.21.0\". Defaults to the latest Langfuse release at the time this module version was published. See https://github.com/langfuse/langfuse/releases."
   type        = string
-  default     = "4.14.0"
+  default     = "4.21.0"
+}
+
+variable "helm_release_timeout" {
+  description = "Seconds to wait for the Langfuse Helm release to become ready. Fargate cold starts, and bringing up ClickHouse and Keeper on EFS-backed volumes, take longer than the Helm provider's default 300s."
+  type        = number
+  default     = 900
 }
 
 # Resource configuration variables
@@ -303,7 +309,7 @@ variable "ingress_inbound_cidrs" {
 variable "redis_at_rest_encryption" {
   description = "Whether at-rest encryption is enabled for the Redis cluster"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "redis_multi_az" {

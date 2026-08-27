@@ -199,6 +199,14 @@ resource "kubernetes_namespace" "langfuse" {
   metadata {
     name = "langfuse"
   }
+
+  # Destroy the namespace before the PVs: this removes the PVCs the ClickHouse
+  # operator created, releasing the PVs so their deletion is not held back by
+  # the pv-protection finalizer.
+  depends_on = [
+    kubernetes_persistent_volume.clickhouse_data,
+    kubernetes_persistent_volume.clickhouse_keeper,
+  ]
 }
 
 resource "random_bytes" "salt" {
@@ -220,7 +228,7 @@ resource "random_bytes" "encryption_key" {
 resource "kubernetes_secret" "langfuse" {
   metadata {
     name      = "langfuse"
-    namespace = "langfuse"
+    namespace = kubernetes_namespace.langfuse.metadata[0].name
   }
 
   data = {
@@ -239,6 +247,11 @@ resource "helm_release" "langfuse" {
   version    = var.langfuse_helm_chart_version
   chart      = "langfuse"
   namespace  = kubernetes_namespace.langfuse.metadata[0].name
+
+  # Fargate cold starts on EFS-backed volumes mean the default 300s is not
+  # enough: the release brings up ClickHouse and Keeper before the web pod can
+  # pass its probes, and the web pod may crash-restart once on the way.
+  timeout = var.helm_release_timeout
 
   values = compact([
     local.langfuse_values,
@@ -259,6 +272,8 @@ resource "helm_release" "langfuse" {
     kubernetes_service_account.aws_load_balancer_controller,
     helm_release.aws_load_balancer_controller,
     helm_release.clickhouse_operator,
+    module.vpc,
+    aws_efs_mount_target.eks,
   ]
 
   lifecycle {

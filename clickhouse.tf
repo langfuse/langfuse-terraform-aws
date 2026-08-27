@@ -28,6 +28,10 @@ resource "helm_release" "cert_manager" {
   values = [<<EOT
 crds:
   enabled: true
+# On Fargate the pod IP is the node IP, so the webhook's default securePort
+# 10250 collides with the kubelet, which answers with its own certificate.
+webhook:
+  securePort: 10260
 EOT
   ]
 
