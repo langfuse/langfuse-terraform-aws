@@ -54,3 +54,54 @@ output "bucket_id" {
   description = "ID of the S3 bucket for Langfuse"
   value       = aws_s3_bucket.langfuse.id
 }
+
+output "isolated_execution_vpc_id" {
+  description = "ID of the shared isolated VPC that runs untrusted code. Null unless code evaluators or the agent sandbox are enabled."
+  value       = one(module.isolated_execution_vpc[*].vpc_id)
+}
+
+output "isolated_execution_subnet_ids" {
+  description = "Private subnet IDs of the shared isolated VPC. Empty unless code evaluators or the agent sandbox are enabled."
+  value       = try(module.isolated_execution_vpc[0].private_subnets, [])
+}
+
+output "isolated_execution_route_table_ids" {
+  description = "Private route table IDs of the shared isolated VPC. These carry no default route. Empty unless code evaluators or the agent sandbox are enabled."
+  value       = try(module.isolated_execution_vpc[0].private_route_table_ids, [])
+}
+
+output "agent_sandbox_execution_role_arn" {
+  description = "IAM role the MicroVM guest runs as. Null when the agent sandbox is disabled."
+  value       = one(aws_iam_role.agent_sandbox_execution[*].arn)
+}
+
+output "agent_sandbox_egress_network_connector_arn" {
+  description = "Deny-all VPC egress connector ARN. Null when the agent sandbox is disabled."
+  value       = one(aws_lambdacore_network_connector.agent_sandbox_egress[*].arn)
+}
+
+output "agent_sandbox_microvm_image_arn" {
+  description = "Constructed MicroVM image ARN. The image itself is created by build-microvm-image.sh after apply. Null when the agent sandbox is disabled."
+  value       = var.enable_agent_sandbox_microvm ? local.agent_sandbox_microvm_image_arn : null
+}
+
+# Everything build-microvm-image.sh needs, so the image build is one command with
+# no copy-paste:
+#
+#   terraform output -json agent_sandbox_build_env \
+#     | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > .env && source .env
+#   bash packages/in-app-agent-sandbox-runtime/build-microvm-image.sh
+#
+# AWS_PROFILE is deliberately absent: the script requires it, but only the caller
+# knows which local profile to use.
+output "agent_sandbox_build_env" {
+  description = "Environment for packages/in-app-agent-sandbox-runtime/build-microvm-image.sh. Set AWS_PROFILE yourself. Null when the agent sandbox is disabled."
+  value = var.enable_agent_sandbox_microvm ? {
+    AWS_REGION                    = data.aws_region.current.region
+    S3_BUCKET                     = aws_s3_bucket.agent_sandbox_artifacts[0].bucket
+    MICROVM_IMAGE_NAME            = var.agent_sandbox_image_name
+    LAMBDA_MICROVM_BUILD_ROLE_ARN = aws_iam_role.agent_sandbox_build[0].arn
+    BASE_IMAGE_ARN                = "arn:${data.aws_partition.current.partition}:lambda:${data.aws_region.current.region}:aws:microvm-image:al2023-1"
+    BASE_IMAGE_VERSION            = "0"
+  } : null
+}

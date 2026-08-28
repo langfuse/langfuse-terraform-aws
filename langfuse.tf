@@ -121,7 +121,9 @@ EOT
 
   clickhouse_values = local.deploy_clickhouse ? local.clickhouse_internal_values : local.clickhouse_external_values
 
-  additional_env_values = !var.enable_code_based_eval_executors && length(var.additional_env) == 0 ? "" : <<EOT
+  ai_features_configured = var.ai_features_provider != null
+
+  additional_env_values = !var.enable_code_based_eval_executors && !local.ai_features_configured && !var.enable_in_app_agent && length(var.additional_env) == 0 ? "" : <<EOT
 langfuse:
   additionalEnv:
 %{if var.enable_code_based_eval_executors~}
@@ -131,6 +133,24 @@ langfuse:
       value: ${jsonencode(local.code_based_eval_executor_lambda_names.python)}
     - name: LANGFUSE_CODE_EVAL_AWS_LAMBDA_NODE_FUNCTION_NAME
       value: ${jsonencode(local.code_based_eval_executor_lambda_names.node)}
+%{endif~}
+%{if local.ai_features_configured~}
+    - name: LANGFUSE_AI_PROVIDER
+      value: ${jsonencode(var.ai_features_provider)}
+    - name: LANGFUSE_AI_MODEL
+      value: ${jsonencode(var.ai_features_model)}
+%{if var.ai_features_small_model != null~}
+    - name: LANGFUSE_AI_SMALL_MODEL
+      value: ${jsonencode(var.ai_features_small_model)}
+%{endif~}
+%{if var.ai_features_provider == "bedrock"~}
+    - name: LANGFUSE_AI_AWS_BEDROCK_REGION
+      value: ${jsonencode(coalesce(var.ai_features_bedrock_region, data.aws_region.current.region))}
+%{endif~}
+%{endif~}
+%{if var.enable_in_app_agent~}
+    - name: LANGFUSE_IN_APP_AGENT_ENABLED
+      value: "true"
 %{endif~}
 %{for env in var.additional_env~}
     - name: ${env.name}
@@ -153,15 +173,35 @@ langfuse:
 %{endfor~}
 EOT
 
-  code_eval_worker_values = !var.enable_code_based_eval_executors ? "" : <<EOT
+  # Worker-only env. Both features render into the same
+  # langfuse.worker.pod.additionalEnv list, so they must share one values
+  # document: Helm coalesces maps across -f documents but *replaces* lists, so
+  # two documents each setting additionalEnv would silently drop one feature's
+  # variables. Only the worker reads either set — it consumes the code eval and
+  # agent run queues.
+  worker_additional_env_values = !var.enable_code_based_eval_executors && !var.enable_agent_sandbox_microvm ? "" : <<EOT
 langfuse:
   worker:
     pod:
       additionalEnv:
+%{if var.enable_code_based_eval_executors~}
         - name: LANGFUSE_CODE_EVAL_EXECUTION_WORKER_CONCURRENCY
           value: ${jsonencode(tostring(var.code_eval_execution_worker_concurrency))}
         - name: QUEUE_CONSUMER_CODE_EVAL_EXECUTION_QUEUE_IS_ENABLED
           value: "true"
+%{endif~}
+%{if var.enable_agent_sandbox_microvm~}
+        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER
+          value: "lambda-microvm"
+        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_IMAGE_IDENTIFIER
+          value: ${jsonencode(local.agent_sandbox_microvm_image_arn)}
+        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EXECUTION_ROLE_ARN
+          value: ${jsonencode(one(aws_iam_role.agent_sandbox_execution[*].arn))}
+        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EGRESS_NETWORK_CONNECTOR_ARN
+          value: ${jsonencode(one(aws_lambdacore_network_connector.agent_sandbox_egress[*].arn))}
+        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION
+          value: ${jsonencode(data.aws_region.current.region)}
+%{endif~}
 EOT
 
   ingress_values    = <<EOT
@@ -278,7 +318,7 @@ resource "helm_release" "langfuse" {
     local.ingress_values,
     local.encryption_values,
     local.additional_env_values,
-    local.code_eval_worker_values,
+    local.worker_additional_env_values,
     local.clickhouse_overwrite_values,
   ])
 
@@ -287,6 +327,8 @@ resource "helm_release" "langfuse" {
     aws_iam_role.langfuse_irsa,
     aws_iam_role_policy.langfuse_s3_access,
     aws_iam_role_policy.langfuse_code_based_eval_executor_invoke,
+    aws_iam_role_policy.langfuse_agent_sandbox,
+    aws_iam_role_policy.langfuse_ai_features_bedrock,
     aws_eks_fargate_profile.namespaces,
     kubernetes_persistent_volume.clickhouse_data,
     kubernetes_persistent_volume.clickhouse_keeper,

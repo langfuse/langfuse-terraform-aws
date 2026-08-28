@@ -33,6 +33,13 @@ module "langfuse" {
   # Optional: Pin the Langfuse application version (defaults to the latest
   # release at the time this module version was published)
   app_version = "4.24.0"
+
+  # Optional: Langfuse AI features (in-app agent, Ask AI). Requires app_version
+  # >= 4.24. The agent sandbox image is built out of band after apply.
+  # ai_features_provider         = "bedrock"
+  # ai_features_model            = "eu.anthropic.claude-opus-5"
+  # enable_in_app_agent          = true
+  # enable_agent_sandbox_microvm = true
 }
 
 provider "kubernetes" {

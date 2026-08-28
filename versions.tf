@@ -1,6 +1,7 @@
 terraform {
   # 1.9 is the first release that lets a variable validation block reference
-  # another variable, which the subnet validations in variables.tf rely on.
+  # another variable, which the name length and AI feature validations in
+  # variables.tf rely on.
   required_version = ">= 1.9"
 
   required_providers {
@@ -8,7 +9,8 @@ terraform {
       source = "hashicorp/aws"
       # Bounded deliberately: an open-ended constraint silently adopts the next
       # provider major, which removes attributes this module uses.
-      version = ">= 6.30, < 7.0"
+      # 6.61 is the first release with aws_lambdacore_network_connector.
+      version = ">= 6.61, < 7.0"
     }
 
     archive = {
