@@ -32,7 +32,7 @@ module "langfuse" {
 
   # Optional: Pin the Langfuse application version (defaults to the latest
   # release at the time this module version was published)
-  app_version = "4.24.0"
+  app_version = "4.25.0"
 
   # Optional: Langfuse AI features (in-app agent, Ask AI). Requires app_version
   # >= 4.24. The agent sandbox image is built out of band after apply.

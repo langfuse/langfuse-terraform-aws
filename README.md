@@ -44,7 +44,7 @@ module "langfuse" {
 
   # Optional: Pin the Langfuse application version. Defaults to the latest
   # release at the time this module version was published.
-  app_version = "4.24.0"
+  app_version = "4.25.0"
   
   # Optional: Activate additional log tables in ClickHouse. Will increase EFS costs, but may aid in debugging.
   enable_clickhouse_log_tables = false  # Set to true to have additional logs.
@@ -248,7 +248,7 @@ instance-wide Langfuse AI model. Requires Langfuse `>= 4.24` and is off by defau
 ```hcl
 module "langfuse" {
   # ...
-  app_version = "4.24.0" # or newer
+  app_version = "4.25.0" # or newer
 
   ai_features_provider = "bedrock"
   ai_features_model    = "eu.anthropic.claude-opus-5"
@@ -352,7 +352,7 @@ The module deploys the Langfuse Helm chart v2 (`langfuse_helm_chart_version`), w
 ```hcl
 module "langfuse" {
   # ...
-  app_version = "4.24.0"
+  app_version = "4.25.0"
 }
 ```
 
