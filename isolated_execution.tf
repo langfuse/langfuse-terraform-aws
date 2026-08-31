@@ -15,6 +15,17 @@
 
 locals {
   isolated_execution_enabled = var.enable_code_based_eval_executors || var.enable_agent_sandbox_microvm
+
+  # code_based_eval_vpc_cidr is the deprecated 1.1.1 name, honoured while it is set.
+  isolated_execution_vpc_cidr = coalesce(var.code_based_eval_vpc_cidr, var.isolated_execution_vpc_cidr)
+}
+
+# 1.1.1 shipped this VPC as module.code_based_eval_executor_vpc, before the agent
+# sandbox began sharing it. Without this block, upgrading from 1.1.1 destroys and
+# recreates the VPC and everything attached to it.
+moved {
+  from = module.code_based_eval_executor_vpc
+  to   = module.isolated_execution_vpc
 }
 
 module "isolated_execution_vpc" {
@@ -24,10 +35,10 @@ module "isolated_execution_vpc" {
   version = "~> 5.0"
 
   name = "${var.name}-isolated-execution"
-  cidr = var.isolated_execution_vpc_cidr
+  cidr = local.isolated_execution_vpc_cidr
 
   azs             = local.azs
-  private_subnets = [for index, _ in local.azs : cidrsubnet(var.isolated_execution_vpc_cidr, 2, index)]
+  private_subnets = [for index, _ in local.azs : cidrsubnet(local.isolated_execution_vpc_cidr, 2, index)]
 
   create_igw         = false
   enable_nat_gateway = false

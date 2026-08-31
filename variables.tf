@@ -341,6 +341,17 @@ variable "enable_code_based_eval_executors" {
   default     = false
 }
 
+variable "code_based_eval_vpc_cidr" {
+  description = "Deprecated: renamed to isolated_execution_vpc_cidr in 1.2.0, because the VPC is now shared with the agent sandbox. Still honoured when set. Remove it and use isolated_execution_vpc_cidr instead."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.code_based_eval_vpc_cidr == null || var.isolated_execution_vpc_cidr == "10.1.0.0/24"
+    error_message = "Set either code_based_eval_vpc_cidr (deprecated) or isolated_execution_vpc_cidr, not both."
+  }
+}
+
 variable "isolated_execution_vpc_cidr" {
   description = "CIDR block for the shared isolated VPC that runs untrusted code: the code evaluator Lambdas and the agent sandbox MicroVMs. Must not overlap vpc_cidr."
   type        = string
