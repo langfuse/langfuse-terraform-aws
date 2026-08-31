@@ -54,8 +54,3 @@ output "bucket_id" {
   description = "ID of the S3 bucket for Langfuse"
   value       = aws_s3_bucket.langfuse.id
 }
-
-output "code_based_eval_executor_lambda_function_names" {
-  description = "Code-based eval executor Lambda function names by runtime (empty when disabled)"
-  value       = var.enable_code_based_eval_executors ? local.code_based_eval_executor_lambda_names : {}
-}

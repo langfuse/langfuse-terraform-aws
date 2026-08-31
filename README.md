@@ -433,7 +433,6 @@ A destroy that appears stuck is usually just working through these — do **not*
 | route53_nameservers    | Route53 zone nameservers (null when skip_dns_setup) |
 | load_balancer_dns_name | DNS name of the Langfuse ALB     |
 | load_balancer_zone_id  | Hosted zone ID of the ALB, for external Route53 alias records |
-| code_based_eval_executor_lambda_function_names | Lambda function names by runtime (empty when disabled) |
 
 ## Support
 
