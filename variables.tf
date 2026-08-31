@@ -2,6 +2,11 @@ variable "name" {
   description = "Name prefix for resources"
   type        = string
   default     = "langfuse"
+
+  validation {
+    condition     = !var.enable_code_based_eval_executors || length(var.name) <= 32
+    error_message = "name must be at most 32 characters when code-based eval executors are enabled."
+  }
 }
 
 variable "domain" {
@@ -328,6 +333,78 @@ variable "redis_snapshot_window" {
   description = "Daily UTC window for the automatic Redis snapshot"
   type        = string
   default     = "03:00-04:00"
+}
+
+variable "enable_code_based_eval_executors" {
+  description = "Create tenant-isolated, network-isolated Lambda executors for code-based evals and configure Langfuse to use them."
+  type        = bool
+  default     = false
+}
+
+variable "code_based_eval_vpc_cidr" {
+  description = "CIDR block for the dedicated isolated code-based eval executor VPC."
+  type        = string
+  default     = "10.1.0.0/24"
+
+  validation {
+    condition = (
+      can(cidrnetmask(var.code_based_eval_vpc_cidr)) &&
+      can(cidrsubnet(var.code_based_eval_vpc_cidr, 2, 2)) &&
+      can(regex("/(?:[0-9]|1[0-9]|2[0-6])$", var.code_based_eval_vpc_cidr))
+    )
+    error_message = "code_based_eval_vpc_cidr must be a valid IPv4 CIDR with a /26 or shorter prefix so it can contain three AWS-valid subnets."
+  }
+}
+
+variable "code_based_eval_executor_lambda_settings" {
+  description = "Per-runtime resource settings for code-based eval executor Lambdas. Lambda CPU is allocated proportionally to memory."
+  type = object({
+    python = object({
+      memory_size                    = number
+      timeout                        = number
+      reserved_concurrent_executions = number
+    })
+    node = object({
+      memory_size                    = number
+      timeout                        = number
+      reserved_concurrent_executions = number
+    })
+  })
+  default = {
+    python = {
+      memory_size                    = 128
+      timeout                        = 2
+      reserved_concurrent_executions = 50
+    }
+    node = {
+      memory_size                    = 128
+      timeout                        = 2
+      reserved_concurrent_executions = 50
+    }
+  }
+
+  validation {
+    condition = alltrue([
+      for settings in values(var.code_based_eval_executor_lambda_settings) :
+      settings.memory_size >= 128 &&
+      settings.memory_size <= 10240 &&
+      settings.timeout >= 1 &&
+      settings.timeout <= 900 &&
+      settings.reserved_concurrent_executions >= 0
+    ])
+    error_message = "Each executor must use 128-10240 MB memory, a 1-900 second timeout, and non-negative reserved concurrency."
+  }
+}
+
+variable "code_eval_execution_worker_concurrency" {
+  description = "Code eval execution queue processing concurrency for each Langfuse worker pod."
+  type        = number
+  default     = 5
+
+  validation {
+    condition     = var.code_eval_execution_worker_concurrency > 0 && floor(var.code_eval_execution_worker_concurrency) == var.code_eval_execution_worker_concurrency
+    error_message = "code_eval_execution_worker_concurrency must be a positive integer."
+  }
 }
 
 # Additional environment variables

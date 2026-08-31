@@ -49,6 +49,9 @@ module "langfuse" {
   # Optional: Activate additional log tables in ClickHouse. Will increase EFS costs, but may aid in debugging.
   enable_clickhouse_log_tables = false  # Set to true to have additional logs.
 
+  # Optional: Enable tenant- and network-isolated code evaluator execution.
+  enable_code_based_eval_executors = true
+
   # Optional: Add additional environment variables
   additional_env = [
     # Direct value
@@ -222,6 +225,14 @@ The default values are based on the recommendations from the [Langfuse K8s docum
 
 These defaults provide a good starting point for production workloads, but you can adjust them based on your specific requirements by setting the corresponding variables in your Terraform configuration.
 
+### Code-Based Evals
+
+Set `enable_code_based_eval_executors = true` to enable Python and TypeScript code evaluators. The module creates tenant-isolated Lambda functions, an isolated VPC with DNS resolution disabled and no internet route or security-group egress, versioned S3 deployment packages, CloudWatch logs, and the least-privilege IAM permissions required for Langfuse to invoke the functions. It also configures the Langfuse web and worker deployments to dispatch and process code eval jobs.
+
+The Lambda handlers are copied from the canonical [Langfuse code eval runners](https://github.com/langfuse/langfuse/tree/main/scripts/code-eval-runners). The executor VPC is separate from the Langfuse VPC so evaluator code cannot access Langfuse databases, caches, pods, or the public internet.
+
+AWS Lambda tenant isolation is available in commercial AWS regions except Asia Pacific (New Zealand). It is not available in AWS GovCloud or China regions. When code-based evals are enabled, `name` must be at most 32 characters to fit Lambda and IAM naming limits.
+
 ### Customizing Resources
 
 You can override any of the resource configurations by setting the appropriate variables.
@@ -251,6 +262,7 @@ This module creates a complete Langfuse stack with the following components:
 - ClickHouse cluster managed by the official [ClickHouse Kubernetes operator](https://github.com/ClickHouse/clickhouse-operator) (including ClickHouse Keeper and cert-manager), or optionally an external ClickHouse such as ClickHouse Cloud
 - TLS certificates and Route53 DNS configuration
 - Required IAM roles and security groups
+- Optional tenant-isolated AWS Lambda executors for code-based evals
 - AWS Load Balancer Controller for ingress
 - EFS CSI Driver for persistent storage
 
@@ -316,7 +328,8 @@ A destroy that appears stuck is usually just working through these — do **not*
 | Name       | Version   |
 |------------|-----------|
 | terraform  | >= 1.9    |
-| aws        | ~> 6.0    |
+| aws        | >= 6.30, < 7.0 |
+| archive    | ~> 2.8    |
 | kubernetes | ~> 2.0    |
 | helm       | ~> 2.7    |
 
@@ -324,7 +337,8 @@ A destroy that appears stuck is usually just working through these — do **not*
 
 | Name       | Version   |
 |------------|-----------|
-| aws        | ~> 6.0    |
+| aws        | >= 6.30, < 7.0 |
+| archive    | ~> 2.8    |
 | kubernetes | ~> 2.0    |
 | helm       | ~> 2.7    |
 | random     | ~> 3.0    |
@@ -343,6 +357,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | aws_route53_zone.zone                   | resource |
 | aws_iam_role.eks                        | resource |
 | aws_iam_role.fargate                    | resource |
+| aws_lambda_function.code_based_eval_executor | resource |
 | aws_security_group.eks                  | resource |
 | aws_security_group.postgres             | resource |
 | aws_security_group.redis                | resource |
@@ -398,6 +413,10 @@ A destroy that appears stuck is usually just working through these — do **not*
 | redis_multi_az                    | Multi availability zone enabled for the redis cluster                                                                                                    | bool         | false                                                                                |    no    |
 | redis_snapshot_retention_limit    | Days of automatic Redis snapshots to keep (0 disables backups)                                                                                           | number       | 1                                                                                    |    no    |
 | redis_snapshot_window             | Daily UTC window for the automatic Redis snapshot                                                                                                        | string       | "03:00-04:00"                                                                        |    no    |
+| enable_code_based_eval_executors  | Create isolated Lambda executors and configure Langfuse code evals                                                                                        | bool         | false                                                                                |    no    |
+| code_based_eval_vpc_cidr          | CIDR for the dedicated code eval executor VPC                                                                                                             | string       | "10.1.0.0/24"                                                                        |    no    |
+| code_based_eval_executor_lambda_settings | Per-runtime Lambda memory, timeout, and reserved concurrency settings                                                                             | object       | See `variables.tf`                                                                   |    no    |
+| code_eval_execution_worker_concurrency | Code eval queue concurrency per worker                                                                                                               | number       | 5                                                                                    |    no    |
 
 ## Outputs
 

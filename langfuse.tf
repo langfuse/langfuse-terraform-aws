@@ -121,13 +121,21 @@ EOT
 
   clickhouse_values = local.deploy_clickhouse ? local.clickhouse_internal_values : local.clickhouse_external_values
 
-  additional_env_values = length(var.additional_env) == 0 ? "" : <<EOT
+  additional_env_values = !var.enable_code_based_eval_executors && length(var.additional_env) == 0 ? "" : <<EOT
 langfuse:
   additionalEnv:
+%{if var.enable_code_based_eval_executors~}
+    - name: LANGFUSE_CODE_EVAL_DISPATCHER
+      value: "aws-lambda"
+    - name: LANGFUSE_CODE_EVAL_AWS_LAMBDA_PYTHON_FUNCTION_NAME
+      value: ${jsonencode(local.code_based_eval_executor_lambda_names.python)}
+    - name: LANGFUSE_CODE_EVAL_AWS_LAMBDA_NODE_FUNCTION_NAME
+      value: ${jsonencode(local.code_based_eval_executor_lambda_names.node)}
+%{endif~}
 %{for env in var.additional_env~}
     - name: ${env.name}
 %{if env.value != null~}
-      value: "${env.value}"
+      value: ${jsonencode(env.value)}
 %{endif~}
 %{if env.valueFrom != null~}
       valueFrom:
@@ -143,6 +151,17 @@ langfuse:
 %{endif~}
 %{endif~}
 %{endfor~}
+EOT
+
+  code_eval_worker_values = !var.enable_code_based_eval_executors ? "" : <<EOT
+langfuse:
+  worker:
+    pod:
+      additionalEnv:
+        - name: LANGFUSE_CODE_EVAL_EXECUTION_WORKER_CONCURRENCY
+          value: ${jsonencode(tostring(var.code_eval_execution_worker_concurrency))}
+        - name: QUEUE_CONSUMER_CODE_EVAL_EXECUTION_QUEUE_IS_ENABLED
+          value: "true"
 EOT
 
   ingress_values    = <<EOT
@@ -259,6 +278,7 @@ resource "helm_release" "langfuse" {
     local.ingress_values,
     local.encryption_values,
     local.additional_env_values,
+    local.code_eval_worker_values,
     local.clickhouse_overwrite_values,
   ])
 
@@ -266,6 +286,7 @@ resource "helm_release" "langfuse" {
     kubernetes_namespace.langfuse,
     aws_iam_role.langfuse_irsa,
     aws_iam_role_policy.langfuse_s3_access,
+    aws_iam_role_policy.langfuse_code_based_eval_executor_invoke,
     aws_eks_fargate_profile.namespaces,
     kubernetes_persistent_volume.clickhouse_data,
     kubernetes_persistent_volume.clickhouse_keeper,
