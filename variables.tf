@@ -449,6 +449,24 @@ variable "ai_features_small_model" {
   default     = null
 }
 
+variable "ai_features_api_key" {
+  description = "API key for the anthropic and openai providers, stored in the langfuse Kubernetes secret and referenced by LANGFUSE_AI_API_KEY. Bedrock authenticates through the AWS credential chain instead and does not use it."
+  type        = string
+  default     = null
+  sensitive   = true
+
+  validation {
+    condition     = var.ai_features_provider == null || var.ai_features_provider == "bedrock" || var.ai_features_api_key != null
+    error_message = "ai_features_api_key is required for the anthropic and openai providers. Bedrock uses the AWS credential chain and needs no key."
+  }
+}
+
+variable "ai_features_base_url" {
+  description = "Base URL for the anthropic and openai providers, set as LANGFUSE_AI_BASE_URL. For openai include the /v1 suffix. Leave null to use the provider default. Unused by bedrock."
+  type        = string
+  default     = null
+}
+
 variable "ai_features_bedrock_region" {
   description = "Region for Bedrock model invocations, set as LANGFUSE_AI_AWS_BEDROCK_REGION. Defaults to the region this module deploys into."
   type        = string

@@ -277,8 +277,12 @@ model by default, which is cost exposure rather than privilege. Narrow it with
 first invocation of a third-party model starts an AWS Marketplace subscription, and Anthropic
 models also require a first-time-use form.
 
-`anthropic` and `openai` need no AWS resources; pass `LANGFUSE_AI_API_KEY` through
-`additional_env` with a `valueFrom.secretKeyRef`.
+`anthropic` and `openai` need no AWS resources, only a key: set `ai_features_api_key` and,
+if you use a gateway or a non-default endpoint, `ai_features_base_url` (include `/v1` for
+`openai`). The key is stored in the `langfuse` Kubernetes secret and referenced by
+`secretKeyRef`, so it never reaches the Helm values. Bedrock ignores both — it authenticates
+through the AWS credential chain. `LANGFUSE_AI_EXTRA_HEADERS` and
+`LANGFUSE_AI_USE_RESPONSES_API` are not exposed as variables; set them via `additional_env`.
 
 This module writes the AI feature variables itself, so do not also set the Helm chart's own
 AI feature values. Both would render into the same containers, leaving two entries per
@@ -510,6 +514,9 @@ A destroy that appears stuck is usually just working through these — do **not*
 | ai_features_provider              | Provider for the instance-wide Langfuse AI model: bedrock, anthropic, or openai                                                                            | string       | null                                                                                 |    no    |
 | ai_features_model                 | Primary model for the AI features (LANGFUSE_AI_MODEL)                                                                                                     | string       | null                                                                                 |    no    |
 | ai_features_small_model           | Optional model for supplementary calls such as conversation titles                                                                                        | string       | null                                                                                 |    no    |
+| ai_features_api_key               | API key for the anthropic and openai providers, stored in the langfuse Kubernetes secret                                                                   | string       | null                                                                                 |    no    |
+| ai_features_base_url              | Base URL for the anthropic and openai providers; include /v1 for openai                                                                                    | string       | null                                                                                 |    no    |
+| ai_features_small_model           | Cheaper model for supplementary calls such as conversation titles                                                                                          | string       | null                                                                                 |    no    |
 | ai_features_bedrock_region        | Region for Bedrock invocations, defaults to the deployment region                                                                                         | string       | null                                                                                 |    no    |
 | ai_features_bedrock_model_arns    | Bedrock model ARNs the Langfuse role may invoke                                                                                                           | list(string) | ["*"]                                                                                |    no    |
 | enable_in_app_agent               | Set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker. Requires a model and Langfuse >= 4.24                                                               | bool         | false                                                                                |    no    |

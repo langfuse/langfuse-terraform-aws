@@ -123,6 +123,13 @@ EOT
 
   ai_features_configured = var.ai_features_provider != null
 
+  # Whether a key was supplied is not itself secret, and the value never enters
+  # this template — it goes to the langfuse Kubernetes secret and is referenced
+  # by secretKeyRef. Without nonsensitive() the whole rendered values document
+  # inherits the variable's sensitivity, which hides every unrelated
+  # environment variable from the plan diff.
+  ai_features_api_key_set = nonsensitive(var.ai_features_api_key != null)
+
   additional_env_values = !var.enable_code_based_eval_executors && !local.ai_features_configured && !var.enable_in_app_agent && length(var.additional_env) == 0 ? "" : <<EOT
 langfuse:
   additionalEnv:
@@ -146,6 +153,17 @@ langfuse:
 %{if var.ai_features_provider == "bedrock"~}
     - name: LANGFUSE_AI_AWS_BEDROCK_REGION
       value: ${jsonencode(coalesce(var.ai_features_bedrock_region, data.aws_region.current.region))}
+%{endif~}
+%{if local.ai_features_api_key_set~}
+    - name: LANGFUSE_AI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: langfuse
+          key: ai-features-api-key
+%{endif~}
+%{if var.ai_features_base_url != null~}
+    - name: LANGFUSE_AI_BASE_URL
+      value: ${jsonencode(var.ai_features_base_url)}
 %{endif~}
 %{endif~}
 %{if var.enable_in_app_agent~}
@@ -297,6 +315,7 @@ resource "kubernetes_secret" "langfuse" {
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
     "clickhouse-password" = local.deploy_clickhouse ? random_password.clickhouse_password.result : var.external_clickhouse_password
     "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
+    "ai-features-api-key" = coalesce(var.ai_features_api_key, "")
   }
 }
 
