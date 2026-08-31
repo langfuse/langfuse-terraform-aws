@@ -12,12 +12,23 @@
 # Non-Bedrock providers (anthropic, openai) need no AWS resources; pass their
 # API key through additional_env with a secretKeyRef.
 
-# Invoke permission is not sufficient on its own: each Bedrock model must be
-# activated in the account first. The first invocation of a third-party model
-# starts an AWS Marketplace subscription, and Anthropic models additionally
-# require a one-time first-use form. Both are console actions that Terraform
-# cannot perform, so do them with an administrator identity before enabling the
-# AI features, and confirm the model responds in the Bedrock playground.
+# Invoke permission is not sufficient on its own: each Bedrock model has to be
+# activated in the account first, which means a Marketplace agreement and, for
+# Anthropic models, a one-time use-case form.
+#
+# Deliberately not managed here, though the provider can do it with
+# data.aws_bedrock_foundation_model_agreement_offers,
+# aws_bedrock_use_case_for_model_access and
+# aws_bedrock_foundation_model_agreement. Three reasons: the form carries the
+# operator's own company and use-case details, which a module cannot invent and
+# should not accept terms on behalf of; the agreement is account-wide rather
+# than per deployment, so two stacks in one account would fight over it, and a
+# destroy here would revoke access for everything else using that model; and
+# ai_features_model takes an inference profile, which can span several
+# foundation model IDs.
+#
+# Do it once per account before enabling the AI features. The README shows the
+# resources for anyone who wants it in their own root module.
 resource "aws_iam_role_policy" "langfuse_ai_features_bedrock" {
   count = var.ai_features_provider == "bedrock" && var.ai_features_model != null ? 1 : 0
 

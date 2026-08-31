@@ -274,9 +274,33 @@ the primary model's price for them. Langfuse Cloud pairs Claude Opus 5 with Clau
 For `bedrock` the module also grants `bedrock:InvokeModel` and
 `bedrock:InvokeModelWithResponseStream` on the Langfuse IAM role — invoke-only, and on every
 model by default, which is cost exposure rather than privilege. Narrow it with
-`ai_features_bedrock_model_arns`. Activate the model in the Bedrock model catalog first: the
-first invocation of a third-party model starts an AWS Marketplace subscription, and Anthropic
-models also require a first-time-use form.
+`ai_features_bedrock_model_arns`.
+
+Activate the model in the account before enabling the AI features. Invoke permission alone is
+not enough: a third-party model needs a Marketplace agreement, and Anthropic models also need
+a one-time use-case form. The module does not manage this, because the form carries your own
+company and use-case details, the agreement is account-wide rather than per deployment, and
+`ai_features_model` takes an inference profile that can span several foundation model IDs. Do
+it in the Bedrock console, or in your own root module:
+
+```hcl
+data "aws_bedrock_foundation_model_agreement_offers" "claude" {
+  model_id = "anthropic.claude-opus-5"
+}
+
+resource "aws_bedrock_use_case_for_model_access" "anthropic" {
+  form_data = base64encode(file("bedrock-use-case.json")) # your company and use case
+}
+
+resource "aws_bedrock_foundation_model_agreement" "claude" {
+  model_id    = "anthropic.claude-opus-5"
+  offer_token = data.aws_bedrock_foundation_model_agreement_offers.claude.offers[0].offer_token
+  depends_on  = [aws_bedrock_use_case_for_model_access.anthropic]
+}
+```
+
+Either way, confirm the model answers in the Bedrock playground before enabling the AI
+features.
 
 The module renders these as `langfuse.aiFeatures.*` Helm values rather than assembling
 `additionalEnv` itself, so the chart owns placement — model on web and worker, sandbox on the
