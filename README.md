@@ -53,9 +53,10 @@ module "langfuse" {
   enable_code_based_eval_executors = true
 
   # Optional: Langfuse AI features (in-app agent, Ask AI). Requires >= 4.24.
-  ai_features_provider = "bedrock"
-  ai_features_model    = "eu.anthropic.claude-opus-5"
-  enable_in_app_agent  = true
+  ai_features_provider    = "bedrock"
+  ai_features_model       = "eu.anthropic.claude-opus-5"
+  ai_features_small_model = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  enable_in_app_agent     = true
 
   # Optional: Add additional environment variables
   additional_env = [
@@ -234,7 +235,7 @@ These defaults provide a good starting point for production workloads, but you c
 
 Set `enable_code_based_eval_executors = true` to enable Python and TypeScript code evaluators. The module creates tenant-isolated Lambda functions, an isolated VPC with DNS resolution disabled and no internet route or security-group egress, versioned S3 deployment packages, CloudWatch logs, and the least-privilege IAM permissions required for Langfuse to invoke the functions. It also configures the Langfuse web and worker deployments to dispatch and process code eval jobs.
 
-The Lambda handlers are copied from the canonical [Langfuse code eval runners](https://github.com/langfuse/langfuse/tree/main/scripts/code-eval-runners). They run in an isolated VPC, separate from the Langfuse VPC, so evaluator code cannot access Langfuse databases, caches, pods, or the public internet. That VPC is shared with the [AI features](#ai-features) agent sandbox — the other workload that runs untrusted code — and each workload gets its own deny-all security group. Size it with `isolated_execution_vpc_cidr`.
+The Lambda handlers are copied from the canonical [Langfuse code eval runners](https://github.com/langfuse/langfuse/tree/main/scripts/code-eval-runners). They run in an isolated VPC, separate from the Langfuse VPC, so evaluator code cannot access Langfuse databases, caches, pods, or the public internet. That VPC is shared with the [Langfuse Assistant](https://langfuse.com/self-hosting/configuration/langfuse-assistant) agent sandbox — the other workload that runs untrusted code — and each workload gets its own deny-all security group. Size it with `isolated_execution_vpc_cidr`.
 
 Upgrading from 1.1.1, where this VPC existed for code evaluators alone: the module carries a `moved` block, so the VPC migrates in place rather than being recreated, and the old `code_based_eval_vpc_cidr` keeps working. Switch to `isolated_execution_vpc_cidr` when convenient. The VPC's `Name` tag and flow-log group are renamed, so the old flow-log group is replaced.
 
@@ -256,6 +257,9 @@ module "langfuse" {
   ai_features_model    = "eu.anthropic.claude-opus-5"
   enable_in_app_agent  = true
 
+  # Optional: a cheaper model for supplementary calls such as conversation titles
+  ai_features_small_model = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+
   # Optional: isolated file and code execution for the agent
   enable_agent_sandbox_microvm = true
 }
@@ -263,6 +267,9 @@ module "langfuse" {
 
 Setting `ai_features_provider` and `ai_features_model` renders `LANGFUSE_AI_*` on web and
 worker; both call the model, web for Ask AI and conversation titles and worker for agent runs.
+Also set `ai_features_small_model` to a cheaper model: supplementary calls such as
+conversation titles fall back to `ai_features_model` when it is unset, which means paying
+the primary model's price for them. Langfuse Cloud pairs Claude Opus 5 with Claude Haiku 4.5.
 For `bedrock` the module also grants `bedrock:InvokeModel` and
 `bedrock:InvokeModelWithResponseStream` on the Langfuse IAM role — invoke-only, and on every
 model by default, which is cost exposure rather than privilege. Narrow it with

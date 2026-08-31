@@ -38,6 +38,7 @@ module "langfuse" {
   # >= 4.24. The agent sandbox image is built out of band after apply.
   # ai_features_provider         = "bedrock"
   # ai_features_model            = "eu.anthropic.claude-opus-5"
+  # ai_features_small_model      = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
   # enable_in_app_agent          = true
   # enable_agent_sandbox_microvm = true
 }
