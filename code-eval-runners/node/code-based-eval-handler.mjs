@@ -2,11 +2,23 @@ import { stripTypeScriptTypes } from "node:module";
 
 const CODE_EVAL_DOCS_URL =
   "https://langfuse.com/docs/evaluation/evaluation-methods/code-evaluators";
+const AWS_ENV_KEYS_TO_SCRUB = new Set([
+  "AWS_ACCESS_KEY",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_SESSION_TOKEN",
+  "AWS_LAMBDA_RUNTIME_API",
+  "AWS_LAMBDA_METADATA_API",
+  "AWS_LAMBDA_METADATA_TOKEN",
+  "AWS_ACCOUNT_ID",
+]);
 
-// `stripTypeScriptTypes` is loaded lazily; call it once during initialization.
+// `stripTypeScriptTypes` is loaded lazily - we call it hear to avoid doing the import in the call itself
 stripTypeScriptTypes("");
 
 export async function handler(event) {
+  scrubAwsEnvironmentForUserCode();
+
   let source;
   try {
     source = stripTypeScriptTypes(event.code.source, { mode: "strip" });
@@ -45,6 +57,14 @@ return evaluate;`,
   return normalizeResult(result);
 }
 
+function scrubAwsEnvironmentForUserCode() {
+  for (const key of Object.keys(process.env)) {
+    if (AWS_ENV_KEYS_TO_SCRUB.has(key)) {
+      delete process.env[key];
+    }
+  }
+}
+
 function normalizeResult(result) {
   if (
     typeof result !== "object" ||
@@ -72,6 +92,8 @@ function runnerError(code, message) {
 function formatError(error) {
   if (error instanceof Error) {
     if (!error.message) return error.name || "Error";
+    // "Error" carries no signal; other names (TypeError, RangeError, custom
+    // classes) tell the evaluator author what went wrong.
     return error.name && error.name !== "Error"
       ? `${error.name}: ${error.message}`
       : error.message;

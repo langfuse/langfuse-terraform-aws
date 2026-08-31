@@ -1,9 +1,13 @@
 import asyncio
 import dataclasses
 import json
+import os
 import traceback
 from dataclasses import dataclass, field
 from typing import Any
+
+# Terraform packages this file directly into the Python code-evaluator Lambda,
+# so changes here update the deployed function's source code hash.
 
 
 @dataclass
@@ -68,6 +72,10 @@ class EvaluationContext:
         )
 
 
+# Public dataclasses exposed to user evaluator code. Field names are Pythonic
+# (snake_case); they are translated to the camelCase wire format (`dataType`,
+# `configId`) by `to_jsonable` so users can return an `EvaluationResult`
+# directly without manual key mangling.
 @dataclass
 class Score:
     value: int | float | str | bool
@@ -83,13 +91,30 @@ class EvaluationResult:
     scores: list[Score] = field(default_factory=list)
 
 
+# Mapping from dataclass snake_case field names to the camelCase keys expected
+# by the dispatcher wire schema. Kept as an explicit allowlist so that user
+# metadata payloads (which may legitimately contain snake_case keys) are never
+# rewritten — only dataclass field names are translated.
 _DATACLASS_FIELD_NAME_OVERRIDES: dict[str, str] = {
     "data_type": "dataType",
     "config_id": "configId",
 }
 
+_AWS_ENV_KEYS_TO_SCRUB = {
+    "AWS_ACCESS_KEY",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_LAMBDA_RUNTIME_API",
+    "AWS_LAMBDA_METADATA_API",
+    "AWS_LAMBDA_METADATA_TOKEN",
+    "AWS_ACCOUNT_ID",
+}
+
 
 def handler(event, context):
+    scrub_aws_environment_for_user_code()
+
     namespace = {
         "EvaluationContext": EvaluationContext,
         "EvaluationResult": EvaluationResult,
@@ -120,6 +145,11 @@ def handler(event, context):
     return normalize_result(result)
 
 
+def scrub_aws_environment_for_user_code():
+    for key in _AWS_ENV_KEYS_TO_SCRUB:
+        os.environ.pop(key, None)
+
+
 def normalize_result(result):
     normalized = to_jsonable(result)
 
@@ -136,6 +166,8 @@ def normalize_result(result):
             continue
 
         # Plain dictionaries bypass the Score dataclass field translation.
+        # Retry known Python aliases at the score boundary without rewriting
+        # arbitrary user metadata. Explicit wire-format keys take precedence.
         for alias, key in _DATACLASS_FIELD_NAME_OVERRIDES.items():
             if alias not in score:
                 continue
@@ -149,6 +181,10 @@ def normalize_result(result):
 
 def to_jsonable(value):
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        # Translate snake_case dataclass field names to the camelCase wire
+        # format and drop None-valued optional fields so that the result
+        # matches the union variants in the TypeScript schema (e.g. the
+        # `dataType: undefined` variant).
         result = {}
         for f in dataclasses.fields(value):
             raw = getattr(value, f.name)
@@ -172,6 +208,8 @@ def to_jsonable(value):
 
 
 def format_error(error: BaseException) -> str:
+    # Bare str() is cryptic for common exceptions — str(KeyError("text")) is
+    # just "'text'" — so always lead with the exception type, Python style.
     name = type(error).__name__
     message = str(error)
     formatted = f"{name}: {message}" if message else name
@@ -184,6 +222,8 @@ def format_error(error: BaseException) -> str:
 
 
 def _user_code_line(error: BaseException) -> int | None:
+    # exec() compiles the evaluator source with filename "<string>", so the
+    # innermost such frame is where the user's own code raised.
     for frame in reversed(traceback.extract_tb(error.__traceback__)):
         if frame.filename == "<string>":
             return frame.lineno
