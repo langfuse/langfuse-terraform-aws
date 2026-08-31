@@ -52,7 +52,7 @@ module "langfuse" {
   # Optional: Enable tenant- and network-isolated code evaluator execution.
   enable_code_based_eval_executors = true
 
-  # Optional: Langfuse AI features (in-app agent, Ask AI). Requires >= 4.24.
+  # Optional: Langfuse AI features (in-app agent, Ask AI). Requires >= 4.25.
   ai_features_provider    = "bedrock"
   ai_features_model       = "eu.anthropic.claude-opus-5"
   ai_features_small_model = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -244,7 +244,7 @@ AWS Lambda tenant isolation is available in commercial AWS regions except Asia P
 ### AI features [#ai-features]
 
 Langfuse's AI features — the in-app agent and Ask AI in the filter search bar — need one
-instance-wide Langfuse AI model. Requires Langfuse `>= 4.24` and is off by default. See the
+instance-wide Langfuse AI model. Requires Langfuse `>= 4.25` and is off by default. See the
 [AI features](https://langfuse.com/security/ai-features) and
 [self-hosting](https://langfuse.com/self-hosting/configuration/langfuse-assistant) docs.
 
@@ -519,7 +519,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | ai_features_small_model           | Cheaper model for supplementary calls such as conversation titles                                                                                          | string       | null                                                                                 |    no    |
 | ai_features_bedrock_region        | Region for Bedrock invocations, defaults to the deployment region                                                                                         | string       | null                                                                                 |    no    |
 | ai_features_bedrock_model_arns    | Bedrock model ARNs the Langfuse role may invoke                                                                                                           | list(string) | ["*"]                                                                                |    no    |
-| enable_in_app_agent               | Set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker. Requires a model and Langfuse >= 4.24                                                               | bool         | false                                                                                |    no    |
+| enable_in_app_agent               | Set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker. Requires a model and Langfuse >= 4.25                                                               | bool         | false                                                                                |    no    |
 | enable_agent_sandbox_microvm      | Create the Lambda MicroVM sandbox for the in-app agent's code execution tools. Image build is out of band                                                  | bool         | false                                                                                |    no    |
 | agent_sandbox_image_name          | Lambda MicroVM image name used to construct the image ARN                                                                                                 | string       | "langfuse-in-app-agent-sandbox"                                                      |    no    |
 
