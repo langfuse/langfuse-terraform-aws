@@ -246,8 +246,11 @@ Two resources are replaced: the VPC flow log and its CloudWatch log group. A log
 is its identity and AWS has no rename, so taking the new name means a new group, and up to 14
 days of flow-log records for this VPC are lost. Nothing else is destroyed and there is no
 downtime, since the VPC carries no traffic by design and the evaluator Lambdas are untouched.
-Verified against a real 1.1.1 deployment: `0 to add, 16 to change, 0 to destroy` if you keep
-the old log group name, and the two replacements above if you take the new one.
+Verified against a real 1.1.1 deployment in a scratch account: `2 to add, 14 to change, 2 to
+destroy`, where the 14 changes are tag-only and the 2 destroys are the pair above. The VPC,
+subnets, route tables, security group, both Lambdas and the S3 bucket came out with identical
+IDs, and the VPC still had no default route, no internet gateway, no NAT and an empty
+security group afterwards.
 
 AWS Lambda tenant isolation is available in commercial AWS regions except Asia Pacific (New Zealand). It is not available in AWS GovCloud or China regions. When code-based evals are enabled, `name` must be at most 32 characters to fit Lambda and IAM naming limits.
 
