@@ -16,8 +16,9 @@
 locals {
   isolated_execution_enabled = var.enable_code_based_eval_executors || var.enable_agent_sandbox_microvm
 
-  # code_based_eval_vpc_cidr is the deprecated 1.1.1 name, honoured while it is set.
-  isolated_execution_vpc_cidr = coalesce(var.code_based_eval_vpc_cidr, var.isolated_execution_vpc_cidr)
+  # Both variables default to null so an explicit value is distinguishable from an
+  # untouched default; code_based_eval_vpc_cidr is the deprecated 1.1.1 name.
+  isolated_execution_vpc_cidr = coalesce(var.isolated_execution_vpc_cidr, var.code_based_eval_vpc_cidr, "10.1.0.0/24")
 }
 
 # 1.1.1 shipped this VPC as module.code_based_eval_executor_vpc, before the agent

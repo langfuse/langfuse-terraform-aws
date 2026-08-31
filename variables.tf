@@ -347,18 +347,18 @@ variable "code_based_eval_vpc_cidr" {
   default     = null
 
   validation {
-    condition     = var.code_based_eval_vpc_cidr == null || var.isolated_execution_vpc_cidr == "10.1.0.0/24"
+    condition     = var.code_based_eval_vpc_cidr == null || var.isolated_execution_vpc_cidr == null
     error_message = "Set either code_based_eval_vpc_cidr (deprecated) or isolated_execution_vpc_cidr, not both."
   }
 }
 
 variable "isolated_execution_vpc_cidr" {
-  description = "CIDR block for the shared isolated VPC that runs untrusted code: the code evaluator Lambdas and the agent sandbox MicroVMs. Must not overlap vpc_cidr."
+  description = "CIDR block for the shared isolated VPC that runs untrusted code: the code evaluator Lambdas and the agent sandbox MicroVMs. Defaults to 10.1.0.0/24. Must not overlap vpc_cidr. Null rather than a literal default so the deprecated code_based_eval_vpc_cidr can be told apart from this one being left alone."
   type        = string
-  default     = "10.1.0.0/24"
+  default     = null
 
   validation {
-    condition = (
+    condition = var.isolated_execution_vpc_cidr == null || (
       can(cidrnetmask(var.isolated_execution_vpc_cidr)) &&
       can(cidrsubnet(var.isolated_execution_vpc_cidr, 2, 2)) &&
       can(regex("/(?:[0-9]|1[0-9]|2[0-6])$", var.isolated_execution_vpc_cidr))

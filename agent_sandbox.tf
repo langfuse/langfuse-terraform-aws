@@ -36,6 +36,13 @@ resource "aws_s3_bucket" "agent_sandbox_artifacts" {
     Domain  = var.domain
     Service = "langfuse"
   }
+
+  lifecycle {
+    precondition {
+      condition     = length("${local.bucket_prefix}-${var.name}-agent-sandbox") <= 63
+      error_message = "The agent sandbox bucket name exceeds S3's 63-character limit. It is built from domain and name, so shorten one of them: ${local.bucket_prefix}-${var.name}-agent-sandbox"
+    }
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "agent_sandbox_artifacts" {
@@ -154,6 +161,11 @@ resource "aws_iam_role" "agent_sandbox_execution" {
   }
 }
 
+# Deliberately not the code evaluator Lambdas' security group, which is
+# identical today: the sandbox is expected to need egress to langfuse-web, while
+# evaluator code must stay sealed. Sharing one group would mean splitting it
+# again at that point, and a rule added for the sandbox would silently apply to
+# evaluator code in the meantime.
 resource "aws_security_group" "agent_sandbox_egress" {
   count = var.enable_agent_sandbox_microvm ? 1 : 0
 
