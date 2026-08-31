@@ -159,9 +159,9 @@ variable "use_single_nat_gateway" {
 }
 
 variable "langfuse_helm_chart_version" {
-  description = "Version of the Langfuse Helm chart to deploy"
+  description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.0 or newer, which is where langfuse.aiFeatures.* was added."
   type        = string
-  default     = "2.0.2"
+  default     = "2.1.0"
 }
 
 variable "app_version" {
@@ -458,6 +458,11 @@ variable "ai_features_api_key" {
   validation {
     condition     = var.ai_features_provider == null || var.ai_features_provider == "bedrock" || var.ai_features_api_key != null
     error_message = "ai_features_api_key is required for the anthropic and openai providers. Bedrock uses the AWS credential chain and needs no key."
+  }
+
+  validation {
+    condition     = var.ai_features_provider != "bedrock" || var.ai_features_api_key == null
+    error_message = "ai_features_api_key is not used by the bedrock provider, which authenticates through the AWS credential chain. Remove it, or switch provider."
   }
 }
 

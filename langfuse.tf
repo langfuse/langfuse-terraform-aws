@@ -123,6 +123,16 @@ EOT
 
   ai_features_configured = var.ai_features_provider != null
 
+  # Chart 2.1.0 introduced langfuse.aiFeatures.*. Helm silently ignores unknown
+  # values, and the chart ships no values.schema.json, so on an older chart the
+  # AI features would be absent with nothing reported. A version that does not
+  # parse as semver is assumed to be a deliberate custom build and left alone.
+  chart_version_parts = try(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version), null)
+  chart_supports_ai_features = local.chart_version_parts == null ? true : (
+    tonumber(local.chart_version_parts[0]) > 2 ||
+    (tonumber(local.chart_version_parts[0]) == 2 && tonumber(local.chart_version_parts[1]) >= 1)
+  )
+
   # Whether a key was supplied is not itself secret, and the value never enters
   # this template — it goes to the langfuse Kubernetes secret and is referenced
   # by secretKeyRef. Without nonsensitive() the whole rendered values document
@@ -130,7 +140,7 @@ EOT
   # environment variable from the plan diff.
   ai_features_api_key_set = nonsensitive(var.ai_features_api_key != null)
 
-  additional_env_values = !var.enable_code_based_eval_executors && !local.ai_features_configured && !var.enable_in_app_agent && length(var.additional_env) == 0 ? "" : <<EOT
+  additional_env_values = !var.enable_code_based_eval_executors && length(var.additional_env) == 0 ? "" : <<EOT
 langfuse:
   additionalEnv:
 %{if var.enable_code_based_eval_executors~}
@@ -140,35 +150,6 @@ langfuse:
       value: ${jsonencode(local.code_based_eval_executor_lambda_names.python)}
     - name: LANGFUSE_CODE_EVAL_AWS_LAMBDA_NODE_FUNCTION_NAME
       value: ${jsonencode(local.code_based_eval_executor_lambda_names.node)}
-%{endif~}
-%{if local.ai_features_configured~}
-    - name: LANGFUSE_AI_PROVIDER
-      value: ${jsonencode(var.ai_features_provider)}
-    - name: LANGFUSE_AI_MODEL
-      value: ${jsonencode(var.ai_features_model)}
-%{if var.ai_features_small_model != null~}
-    - name: LANGFUSE_AI_SMALL_MODEL
-      value: ${jsonencode(var.ai_features_small_model)}
-%{endif~}
-%{if var.ai_features_provider == "bedrock"~}
-    - name: LANGFUSE_AI_AWS_BEDROCK_REGION
-      value: ${jsonencode(coalesce(var.ai_features_bedrock_region, data.aws_region.current.region))}
-%{endif~}
-%{if local.ai_features_api_key_set~}
-    - name: LANGFUSE_AI_API_KEY
-      valueFrom:
-        secretKeyRef:
-          name: langfuse
-          key: ai-features-api-key
-%{endif~}
-%{if var.ai_features_base_url != null~}
-    - name: LANGFUSE_AI_BASE_URL
-      value: ${jsonencode(var.ai_features_base_url)}
-%{endif~}
-%{endif~}
-%{if var.enable_in_app_agent~}
-    - name: LANGFUSE_IN_APP_AGENT_ENABLED
-      value: "true"
 %{endif~}
 %{for env in var.additional_env~}
     - name: ${env.name}
@@ -191,34 +172,51 @@ langfuse:
 %{endfor~}
 EOT
 
-  # Worker-only env. Both features render into the same
-  # langfuse.worker.pod.additionalEnv list, so they must share one values
-  # document: Helm coalesces maps across -f documents but *replaces* lists, so
-  # two documents each setting additionalEnv would silently drop one feature's
-  # variables. Only the worker reads either set — it consumes the code eval and
-  # agent run queues.
-  worker_additional_env_values = !var.enable_code_based_eval_executors && !var.enable_agent_sandbox_microvm ? "" : <<EOT
+  code_eval_worker_values = !var.enable_code_based_eval_executors ? "" : <<EOT
 langfuse:
   worker:
     pod:
       additionalEnv:
-%{if var.enable_code_based_eval_executors~}
         - name: LANGFUSE_CODE_EVAL_EXECUTION_WORKER_CONCURRENCY
           value: ${jsonencode(tostring(var.code_eval_execution_worker_concurrency))}
         - name: QUEUE_CONSUMER_CODE_EVAL_EXECUTION_QUEUE_IS_ENABLED
           value: "true"
+EOT
+
+  # The chart places the model on web and worker and the sandbox on the worker
+  # only, and validates the combinations, so none of that is reimplemented here.
+  # Requires chart 2.1.0; see the precondition on helm_release.
+  ai_features_values = !local.ai_features_configured && !var.enable_in_app_agent ? "" : <<EOT
+langfuse:
+  aiFeatures:
+%{if local.ai_features_configured~}
+    provider: ${jsonencode(var.ai_features_provider)}
+    model: ${jsonencode(var.ai_features_model)}
+%{if var.ai_features_small_model != null~}
+    smallModel: ${jsonencode(var.ai_features_small_model)}
 %{endif~}
+%{if var.ai_features_provider == "bedrock"~}
+    bedrockRegion: ${jsonencode(coalesce(var.ai_features_bedrock_region, data.aws_region.current.region))}
+%{endif~}
+%{if var.ai_features_base_url != null~}
+    baseUrl: ${jsonencode(var.ai_features_base_url)}
+%{endif~}
+%{if local.ai_features_api_key_set~}
+    apiKey:
+      secretKeyRef:
+        name: langfuse
+        key: ai-features-api-key
+%{endif~}
+%{endif~}
+    inAppAgent:
+      enabled: ${var.enable_in_app_agent}
 %{if var.enable_agent_sandbox_microvm~}
-        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER
-          value: "lambda-microvm"
-        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_IMAGE_IDENTIFIER
-          value: ${jsonencode(local.agent_sandbox_microvm_image_arn)}
-        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EXECUTION_ROLE_ARN
-          value: ${jsonencode(one(aws_iam_role.agent_sandbox_execution[*].arn))}
-        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EGRESS_NETWORK_CONNECTOR_ARN
-          value: ${jsonencode(one(aws_lambdacore_network_connector.agent_sandbox_egress[*].arn))}
-        - name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION
-          value: ${jsonencode(data.aws_region.current.region)}
+      sandbox:
+        provider: "lambda-microvm"
+        imageIdentifier: ${jsonencode(local.agent_sandbox_microvm_image_arn)}
+        executionRoleArn: ${jsonencode(one(aws_iam_role.agent_sandbox_execution[*].arn))}
+        region: ${jsonencode(data.aws_region.current.region)}
+        egressNetworkConnectorArn: ${jsonencode(one(aws_lambdacore_network_connector.agent_sandbox_egress[*].arn))}
 %{endif~}
 EOT
 
@@ -337,7 +335,8 @@ resource "helm_release" "langfuse" {
     local.ingress_values,
     local.encryption_values,
     local.additional_env_values,
-    local.worker_additional_env_values,
+    local.code_eval_worker_values,
+    local.ai_features_values,
     local.clickhouse_overwrite_values,
   ])
 
@@ -362,6 +361,11 @@ resource "helm_release" "langfuse" {
     precondition {
       condition     = var.external_clickhouse == null || var.external_clickhouse_password != ""
       error_message = "external_clickhouse_password must be set when external_clickhouse is configured."
+    }
+
+    precondition {
+      condition     = !(local.ai_features_configured || var.enable_in_app_agent) || local.chart_supports_ai_features
+      error_message = "The AI features need langfuse_helm_chart_version 2.1.0 or newer, which is where langfuse.aiFeatures.* was added. Helm ignores unknown values silently, so an older chart would deploy without them and report nothing."
     }
   }
 }

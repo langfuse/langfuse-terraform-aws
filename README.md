@@ -40,7 +40,7 @@ module "langfuse" {
   cache_instance_count = 2
 
   # Optional: Configure Langfuse Helm chart version
-  langfuse_helm_chart_version = "2.0.2"
+  langfuse_helm_chart_version = "2.1.0"
 
   # Optional: Pin the Langfuse application version. Defaults to the latest
   # release at the time this module version was published.
@@ -244,7 +244,8 @@ AWS Lambda tenant isolation is available in commercial AWS regions except Asia P
 ### AI features [#ai-features]
 
 Langfuse's AI features — the in-app agent and Ask AI in the filter search bar — need one
-instance-wide Langfuse AI model. Requires Langfuse `>= 4.25` and is off by default. See the
+instance-wide Langfuse AI model. Requires Langfuse `>= 4.25` and Helm chart `>= 2.1.0`, and is
+off by default. See the
 [AI features](https://langfuse.com/security/ai-features) and
 [self-hosting](https://langfuse.com/self-hosting/configuration/langfuse-assistant) docs.
 
@@ -276,6 +277,12 @@ model by default, which is cost exposure rather than privilege. Narrow it with
 `ai_features_bedrock_model_arns`. Activate the model in the Bedrock model catalog first: the
 first invocation of a third-party model starts an AWS Marketplace subscription, and Anthropic
 models also require a first-time-use form.
+
+The module renders these as `langfuse.aiFeatures.*` Helm values rather than assembling
+`additionalEnv` itself, so the chart owns placement — model on web and worker, sandbox on the
+worker only — and validates the combinations. Chart `2.1.0` is where those values were added;
+apply fails with a clear message if `langfuse_helm_chart_version` is older, because Helm
+ignores unknown values silently and the features would otherwise be quietly absent.
 
 `anthropic` and `openai` need no AWS resources, only a key: set `ai_features_api_key` and,
 if you use a gateway or a non-default endpoint, `ai_features_base_url` (include `/v1` for
@@ -481,7 +488,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | postgres_max_capacity             | Maximum ACU capacity for PostgreSQL Serverless v2                                                                                                        | number       | 2.0                                                                                  |    no    |
 | cache_node_type                   | ElastiCache node type                                                                                                                                    | string       | "cache.t4g.small"                                                                    |    no    |
 | cache_instance_count              | Number of ElastiCache instances                                                                                                                          | number       | 1                                                                                    |    no    |
-| langfuse_helm_chart_version       | Version of the Langfuse Helm chart to deploy                                                                                                             | string       | "2.0.0"                                                                              |    no    |
+| langfuse_helm_chart_version       | Version of the Langfuse Helm chart to deploy; the AI features need >= 2.1.0                                                                                                             | string       | "2.1.0"                                                                              |    no    |
 | app_version                       | Langfuse application version (Docker image tag) to deploy. Defaults to the latest release at the time this module version was published.                 | string       | "4.14.0"                                                                             |    no    |
 | langfuse_cpu                      | CPU allocation for Langfuse containers                                                                                                                   | string       | "2"                                                                                  |    no    |
 | langfuse_memory                   | Memory allocation for Langfuse containers                                                                                                                | string       | "4Gi"                                                                                |    no    |
