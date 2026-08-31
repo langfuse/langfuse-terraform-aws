@@ -237,7 +237,17 @@ Set `enable_code_based_eval_executors = true` to enable Python and TypeScript co
 
 The Lambda handlers are copied from the canonical [Langfuse code eval runners](https://github.com/langfuse/langfuse/tree/main/scripts/code-eval-runners). They run in an isolated VPC, separate from the Langfuse VPC, so evaluator code cannot access Langfuse databases, caches, pods, or the public internet. That VPC is shared with the [Langfuse Assistant](https://langfuse.com/self-hosting/configuration/langfuse-assistant) agent sandbox — the other workload that runs untrusted code — and each workload gets its own deny-all security group. Size it with `isolated_execution_vpc_cidr`.
 
-Upgrading from 1.1.1, where this VPC existed for code evaluators alone: the module carries a `moved` block, so the VPC migrates in place rather than being recreated, and the old `code_based_eval_vpc_cidr` keeps working. Switch to `isolated_execution_vpc_cidr` when convenient. The VPC's `Name` tag and flow-log group are renamed, so the old flow-log group is replaced.
+Upgrading from 1.1.1, where this VPC existed for code evaluators alone: the module carries a
+`moved` block, so the VPC, its subnets, route tables, security group and the code evaluator
+Lambdas migrate in place rather than being recreated, and the old `code_based_eval_vpc_cidr`
+keeps working. Switch to `isolated_execution_vpc_cidr` when convenient.
+
+Two resources are replaced: the VPC flow log and its CloudWatch log group. A log group's name
+is its identity and AWS has no rename, so taking the new name means a new group, and up to 14
+days of flow-log records for this VPC are lost. Nothing else is destroyed and there is no
+downtime, since the VPC carries no traffic by design and the evaluator Lambdas are untouched.
+Verified against a real 1.1.1 deployment: `0 to add, 16 to change, 0 to destroy` if you keep
+the old log group name, and the two replacements above if you take the new one.
 
 AWS Lambda tenant isolation is available in commercial AWS regions except Asia Pacific (New Zealand). It is not available in AWS GovCloud or China regions. When code-based evals are enabled, `name` must be at most 32 characters to fit Lambda and IAM naming limits.
 

@@ -51,12 +51,12 @@ module "isolated_execution_vpc" {
   enable_flow_log                      = true
   create_flow_log_cloudwatch_iam_role  = true
   create_flow_log_cloudwatch_log_group = true
-  # Deliberately still the old prefix. A log group's name is its identity, so
-  # renaming it replaces the group and the flow log pointing at it, which would
-  # make upgrading from 1.1.1 destroy two resources and lose the retained
-  # records. Everything else here takes the new name. Rename this at the next
-  # major.
-  flow_log_cloudwatch_log_group_name_prefix       = "${var.name}-code-based-eval-"
+  # A log group's name is its identity and AWS has no rename, so changing this
+  # replaces the group and the flow log pointing at it. Upgrading from 1.1.1
+  # with code evaluators enabled therefore loses up to 14 days of records for
+  # this VPC. Done deliberately and now rather than later: the cost is the same
+  # whenever it happens and only grows with adoption.
+  flow_log_cloudwatch_log_group_name_prefix       = "${var.name}-isolated-execution-"
   flow_log_cloudwatch_log_group_retention_in_days = 14
   flow_log_cloudwatch_log_group_class             = "INFREQUENT_ACCESS"
 
