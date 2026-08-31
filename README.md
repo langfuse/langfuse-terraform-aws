@@ -252,6 +252,17 @@ subnets, route tables, security group, both Lambdas and the S3 bucket came out w
 IDs, and the VPC still had no default route, no internet gateway, no NAT and an empty
 security group afterwards.
 
+To keep the old log group and its records, drop it from state **before** upgrading. Terraform
+then leaves it alone in AWS and creates the new group alongside it:
+
+```bash
+terraform state rm 'module.langfuse.module.code_based_eval_executor_vpc[0].aws_cloudwatch_log_group.flow_log[0]'
+```
+
+Adjust the `module.langfuse` prefix to your own module label. The upgrade then plans `1 to add,
+0 to destroy` for the flow-log pair, and the old group stays until its retention expires. It is
+no longer managed by Terraform, so remove it yourself when you no longer need it.
+
 AWS Lambda tenant isolation is available in commercial AWS regions except Asia Pacific (New Zealand). It is not available in AWS GovCloud or China regions. When code-based evals are enabled, `name` must be at most 32 characters to fit Lambda and IAM naming limits.
 
 ### AI features [#ai-features]
