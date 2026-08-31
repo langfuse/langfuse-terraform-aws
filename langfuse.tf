@@ -306,15 +306,18 @@ resource "kubernetes_secret" "langfuse" {
     namespace = kubernetes_namespace.langfuse.metadata[0].name
   }
 
-  data = {
+  # Merged rather than always present: an unset key adds nothing, so existing
+  # installations see no change to this secret.
+  data = merge({
     "redis-password"      = random_password.redis_password.result
     "postgres-password"   = random_password.postgres_password.result
     "salt"                = random_bytes.salt.base64
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
     "clickhouse-password" = local.deploy_clickhouse ? random_password.clickhouse_password.result : var.external_clickhouse_password
     "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
-    "ai-features-api-key" = coalesce(var.ai_features_api_key, "")
-  }
+    },
+    var.ai_features_api_key == null ? {} : { "ai-features-api-key" = var.ai_features_api_key }
+  )
 }
 
 resource "helm_release" "langfuse" {
