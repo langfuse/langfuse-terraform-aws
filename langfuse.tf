@@ -121,7 +121,7 @@ EOT
 
   clickhouse_values = local.deploy_clickhouse ? local.clickhouse_internal_values : local.clickhouse_external_values
 
-  ai_features_configured = var.ai_features_provider != null
+  ai_features_configured = var.enable_ai_features
 
   # Only whether a key was supplied, which is not itself secret. The value never
   # enters these values: it goes to the langfuse Kubernetes secret and is

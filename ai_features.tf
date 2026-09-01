@@ -30,7 +30,7 @@
 # Do it once per account before enabling the AI features. The README shows the
 # resources for anyone who wants it in their own root module.
 resource "aws_iam_role_policy" "langfuse_ai_features_bedrock" {
-  count = var.ai_features_provider == "bedrock" && var.ai_features_model != null ? 1 : 0
+  count = var.enable_ai_features && var.ai_features_provider == "bedrock" ? 1 : 0
 
   name = "ai-features-bedrock"
   role = aws_iam_role.langfuse_irsa.id

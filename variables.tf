@@ -168,7 +168,7 @@ variable "langfuse_helm_chart_version" {
     # alone rather than rejected. It is also required rather than cosmetic,
     # because || does not short-circuit here, so the regex is evaluated even
     # when the version does not match it.
-    condition = !(var.ai_features_provider != null || var.enable_in_app_agent) || (
+    condition = !var.enable_ai_features || (
       try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) > 2 ||
       (try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) == 2 &&
       try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) >= 1)
@@ -432,6 +432,22 @@ variable "code_eval_execution_worker_concurrency" {
 }
 
 # AI features (in-app agent, Ask AI). See https://langfuse.com/security/ai-features
+variable "enable_ai_features" {
+  description = "Render the chart's langfuse.aiFeatures values and grant Bedrock invoke on the Langfuse role. Requires ai_features_provider and ai_features_model, Langfuse >= 4.25 and Helm chart >= 2.1.0. Terraform-only: there is no matching application environment variable, and AI features are additionally gated per organization inside Langfuse."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_ai_features || (var.ai_features_provider != null && var.ai_features_model != null)
+    error_message = "ai_features_provider and ai_features_model are required when enable_ai_features is true."
+  }
+
+  validation {
+    condition     = var.enable_ai_features || var.ai_features_provider == null
+    error_message = "ai_features_provider is set but enable_ai_features is false, so nothing would be rendered. Set enable_ai_features to true, or remove the provider."
+  }
+}
+
 variable "ai_features_provider" {
   description = "Provider for the instance-wide Langfuse AI model, set as LANGFUSE_AI_PROVIDER. Only \"bedrock\" needs AWS resources from this module; \"anthropic\" and \"openai\" additionally need LANGFUSE_AI_API_KEY via additional_env. Leave null to leave the AI features unconfigured."
   type        = string
@@ -444,10 +460,6 @@ variable "ai_features_provider" {
     error_message = "ai_features_provider must be one of \"bedrock\", \"anthropic\", or \"openai\"."
   }
 
-  validation {
-    condition     = var.ai_features_provider == null || var.ai_features_model != null
-    error_message = "ai_features_model is required when ai_features_provider is set. An incomplete model configuration leaves the AI features reporting as unconfigured."
-  }
 }
 
 variable "ai_features_model" {
@@ -508,8 +520,8 @@ variable "enable_in_app_agent" {
   default     = false
 
   validation {
-    condition     = !var.enable_in_app_agent || var.ai_features_model != null
-    error_message = "ai_features_provider and ai_features_model are required when enable_in_app_agent is true."
+    condition     = !var.enable_in_app_agent || var.enable_ai_features
+    error_message = "enable_ai_features must be true when enable_in_app_agent is true; the agent runs on the instance-wide Langfuse AI model."
   }
 }
 

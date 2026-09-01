@@ -36,6 +36,7 @@ module "langfuse" {
 
   # Optional: Langfuse AI features (in-app agent, Ask AI). Requires app_version
   # >= 4.25. The agent sandbox image is built out of band after apply.
+  # enable_ai_features           = true
   # ai_features_provider         = "bedrock"
   # ai_features_model            = "eu.anthropic.claude-opus-5"
   # ai_features_small_model      = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"

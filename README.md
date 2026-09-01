@@ -53,6 +53,7 @@ module "langfuse" {
   enable_code_based_eval_executors = true
 
   # Optional: Langfuse AI features (in-app agent, Ask AI). Requires >= 4.25.
+  enable_ai_features      = true
   ai_features_provider    = "bedrock"
   ai_features_model       = "eu.anthropic.claude-opus-5"
   ai_features_small_model = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -278,6 +279,7 @@ module "langfuse" {
   # ...
   app_version = "4.25.0" # or newer
 
+  enable_ai_features   = true
   ai_features_provider = "bedrock"
   ai_features_model    = "eu.anthropic.claude-opus-5"
   enable_in_app_agent  = true
@@ -290,7 +292,7 @@ module "langfuse" {
 }
 ```
 
-Setting `ai_features_provider` and `ai_features_model` renders `LANGFUSE_AI_*` on web and
+Setting `enable_ai_features` with `ai_features_provider` and `ai_features_model` renders `LANGFUSE_AI_*` on web and
 worker; both call the model, web for Ask AI and conversation titles and worker for agent runs.
 Also set `ai_features_small_model` to a cheaper model: supplementary calls such as
 conversation titles fall back to `ai_features_model` when it is unset, which means paying
@@ -566,6 +568,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | isolated_execution_vpc_cidr       | CIDR for the shared isolated VPC that runs untrusted code (code evaluators and the agent sandbox)                                                         | string       | "10.1.0.0/24"                                                                        |    no    |
 | code_based_eval_executor_lambda_settings | Per-runtime Lambda memory, timeout, and reserved concurrency settings                                                                             | object       | See `variables.tf`                                                                   |    no    |
 | code_eval_execution_worker_concurrency | Code eval queue concurrency per worker                                                                                                               | number       | 5                                                                                    |    no    |
+| enable_ai_features                | Render the chart's AI feature values and grant Bedrock invoke. Requires a provider and model                                                                | bool         | false                                                                                |    no    |
 | ai_features_provider              | Provider for the instance-wide Langfuse AI model: bedrock, anthropic, or openai                                                                            | string       | null                                                                                 |    no    |
 | ai_features_model                 | Primary model for the AI features (LANGFUSE_AI_MODEL)                                                                                                     | string       | null                                                                                 |    no    |
 | ai_features_small_model           | Optional model for supplementary calls such as conversation titles                                                                                        | string       | null                                                                                 |    no    |
