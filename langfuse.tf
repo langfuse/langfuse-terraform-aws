@@ -121,8 +121,6 @@ EOT
 
   clickhouse_values = local.deploy_clickhouse ? local.clickhouse_internal_values : local.clickhouse_external_values
 
-  ai_features_configured = var.enable_ai_features
-
   # Only whether a key was supplied, which is not itself secret. The value never
   # enters these values: it goes to the langfuse Kubernetes secret and is
   # referenced by secretKeyRef, so the rendered document stays non-sensitive
@@ -176,11 +174,10 @@ EOT
 
   # The chart places the model on web and worker and the sandbox on the worker
   # only, and validates the combinations, so none of that is reimplemented here.
-  # Requires chart 2.1.0; see the precondition on helm_release.
-  ai_features_values = !local.ai_features_configured && !var.enable_in_app_agent ? "" : <<EOT
+  # Requires chart 2.1.0, enforced by a validation on langfuse_helm_chart_version.
+  ai_features_values = !var.enable_ai_features ? "" : <<EOT
 langfuse:
   aiFeatures:
-%{if local.ai_features_configured~}
     provider: ${jsonencode(var.ai_features_provider)}
     model: ${jsonencode(var.ai_features_model)}
 %{if var.ai_features_small_model != null~}
@@ -197,7 +194,6 @@ langfuse:
       secretKeyRef:
         name: langfuse
         key: ai-features-api-key
-%{endif~}
 %{endif~}
     inAppAgent:
       enabled: ${var.enable_in_app_agent}

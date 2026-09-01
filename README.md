@@ -247,8 +247,8 @@ Two resources are replaced: the VPC flow log and its CloudWatch log group. A log
 is its identity and AWS has no rename, so taking the new name means a new group, and up to 14
 days of flow-log records for this VPC are lost. Nothing else is destroyed and there is no
 downtime, since the VPC carries no traffic by design and the evaluator Lambdas are untouched.
-Verified against a real 1.1.1 deployment in a scratch account: `2 to add, 14 to change, 2 to
-destroy`, where the 14 changes are tag-only and the 2 destroys are the pair above. The VPC,
+Verified against a real 1.1.1 deployment in a scratch account, measured at `d1f37cf`: `2 to
+add, 14 to change, 2 to destroy`, where the 14 changes are tag-only and the 2 destroys are the pair above. The VPC,
 subnets, route tables, security group, both Lambdas and the S3 bucket came out with identical
 IDs, and the VPC still had no default route, no internet gateway, no NAT and an empty
 security group afterwards.
@@ -577,7 +577,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | ai_features_small_model           | Cheaper model for supplementary calls such as conversation titles                                                                                          | string       | null                                                                                 |    no    |
 | ai_features_bedrock_region        | Region for Bedrock invocations, defaults to the deployment region                                                                                         | string       | null                                                                                 |    no    |
 | ai_features_bedrock_model_arns    | Bedrock model ARNs the Langfuse role may invoke                                                                                                           | list(string) | ["*"]                                                                                |    no    |
-| enable_in_app_agent               | Set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker. Requires a model and Langfuse >= 4.25                                                               | bool         | false                                                                                |    no    |
+| enable_in_app_agent               | Set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker. Requires enable_ai_features and Langfuse >= 4.25                                                     | bool         | false                                                                                |    no    |
 | enable_agent_sandbox_microvm      | Create the Lambda MicroVM sandbox for the in-app agent's code execution tools. Image build is out of band                                                  | bool         | false                                                                                |    no    |
 | agent_sandbox_image_name          | Lambda MicroVM image name used to construct the image ARN                                                                                                 | string       | "langfuse-in-app-agent-sandbox"                                                      |    no    |
 
