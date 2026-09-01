@@ -162,6 +162,19 @@ variable "langfuse_helm_chart_version" {
   description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.0 or newer, which is where langfuse.aiFeatures.* was added."
   type        = string
   default     = "2.1.0"
+
+  validation {
+    # try() keeps a non-semver tag working: a deliberate custom build is left
+    # alone rather than rejected. It is also required rather than cosmetic,
+    # because || does not short-circuit here, so the regex is evaluated even
+    # when the version does not match it.
+    condition = !(var.ai_features_provider != null || var.enable_in_app_agent) || (
+      try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) > 2 ||
+      (try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) == 2 &&
+      try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) >= 1)
+    )
+    error_message = "The AI features need langfuse_helm_chart_version 2.1.0 or newer, which is where langfuse.aiFeatures.* was added. Helm ignores unknown values silently, so an older chart would deploy without them and report nothing."
+  }
 }
 
 variable "app_version" {

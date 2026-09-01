@@ -55,7 +55,9 @@ module "isolated_execution_vpc" {
   # replaces the group and the flow log pointing at it. Upgrading from 1.1.1
   # with code evaluators enabled therefore loses up to 14 days of records for
   # this VPC. Done deliberately and now rather than later: the cost is the same
-  # whenever it happens and only grows with adoption.
+  # whenever it happens and only grows with adoption. Operators who have to keep
+  # the records can drop the old group from state before upgrading, which leaves
+  # it in AWS untouched; see the upgrade note in the README.
   flow_log_cloudwatch_log_group_name_prefix       = "${var.name}-isolated-execution-"
   flow_log_cloudwatch_log_group_retention_in_days = 14
   flow_log_cloudwatch_log_group_class             = "INFREQUENT_ACCESS"

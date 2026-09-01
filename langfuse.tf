@@ -123,21 +123,12 @@ EOT
 
   ai_features_configured = var.ai_features_provider != null
 
-  # Chart 2.1.0 introduced langfuse.aiFeatures.*. Helm silently ignores unknown
-  # values, and the chart ships no values.schema.json, so on an older chart the
-  # AI features would be absent with nothing reported. A version that does not
-  # parse as semver is assumed to be a deliberate custom build and left alone.
-  chart_version_parts = try(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version), null)
-  chart_supports_ai_features = local.chart_version_parts == null ? true : (
-    tonumber(local.chart_version_parts[0]) > 2 ||
-    (tonumber(local.chart_version_parts[0]) == 2 && tonumber(local.chart_version_parts[1]) >= 1)
-  )
-
-  # Whether a key was supplied is not itself secret, and the value never enters
-  # this template — it goes to the langfuse Kubernetes secret and is referenced
-  # by secretKeyRef. Without nonsensitive() the whole rendered values document
-  # inherits the variable's sensitivity, which hides every unrelated
-  # environment variable from the plan diff.
+  # Only whether a key was supplied, which is not itself secret. The value never
+  # enters these values: it goes to the langfuse Kubernetes secret and is
+  # referenced by secretKeyRef, so the rendered document stays non-sensitive
+  # either way. nonsensitive() is needed because testing the variable directly
+  # in a template condition would mark the whole document sensitive and hide
+  # every unrelated environment variable from the plan diff.
   ai_features_api_key_set = nonsensitive(var.ai_features_api_key != null)
 
   additional_env_values = !var.enable_code_based_eval_executors && length(var.additional_env) == 0 ? "" : <<EOT
@@ -366,10 +357,6 @@ resource "helm_release" "langfuse" {
       error_message = "external_clickhouse_password must be set when external_clickhouse is configured."
     }
 
-    precondition {
-      condition     = !(local.ai_features_configured || var.enable_in_app_agent) || local.chart_supports_ai_features
-      error_message = "The AI features need langfuse_helm_chart_version 2.1.0 or newer, which is where langfuse.aiFeatures.* was added. Helm ignores unknown values silently, so an older chart would deploy without them and report nothing."
-    }
   }
 }
 
