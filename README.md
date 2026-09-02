@@ -40,17 +40,24 @@ module "langfuse" {
   cache_instance_count = 2
 
   # Optional: Configure Langfuse Helm chart version
-  langfuse_helm_chart_version = "2.0.2"
+  langfuse_helm_chart_version = "2.1.0"
 
   # Optional: Pin the Langfuse application version. Defaults to the latest
   # release at the time this module version was published.
-  app_version = "4.24.0"
+  app_version = "4.25.0"
   
   # Optional: Activate additional log tables in ClickHouse. Will increase EFS costs, but may aid in debugging.
   enable_clickhouse_log_tables = false  # Set to true to have additional logs.
 
   # Optional: Enable tenant- and network-isolated code evaluator execution.
   enable_code_based_eval_executors = true
+
+  # Optional: Langfuse AI features (in-app agent, Ask AI). Requires >= 4.25.
+  enable_ai_features      = true
+  ai_features_provider    = "bedrock"
+  ai_features_model       = "eu.anthropic.claude-opus-5"
+  ai_features_small_model = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  enable_in_app_agent     = true
 
   # Optional: Add additional environment variables
   additional_env = [
@@ -229,9 +236,150 @@ These defaults provide a good starting point for production workloads, but you c
 
 Set `enable_code_based_eval_executors = true` to enable Python and TypeScript code evaluators. The module creates tenant-isolated Lambda functions, an isolated VPC with DNS resolution disabled and no internet route or security-group egress, versioned S3 deployment packages, CloudWatch logs, and the least-privilege IAM permissions required for Langfuse to invoke the functions. It also configures the Langfuse web and worker deployments to dispatch and process code eval jobs.
 
-The Lambda handlers are copied from the canonical [Langfuse code eval runners](https://github.com/langfuse/langfuse/tree/main/scripts/code-eval-runners). The executor VPC is separate from the Langfuse VPC so evaluator code cannot access Langfuse databases, caches, pods, or the public internet.
+The Lambda handlers are copied from the canonical [Langfuse code eval runners](https://github.com/langfuse/langfuse/tree/main/scripts/code-eval-runners). They run in an isolated VPC, separate from the Langfuse VPC, so evaluator code cannot access Langfuse databases, caches, pods, or the public internet. That VPC is shared with the [Langfuse Assistant](https://langfuse.com/self-hosting/configuration/langfuse-assistant) agent sandbox — the other workload that runs untrusted code — and each workload gets its own deny-all security group. Size it with `isolated_execution_vpc_cidr`.
+
+Upgrading from 1.1.1, where this VPC existed for code evaluators alone: the module carries a
+`moved` block, so the VPC, its subnets, route tables, security group and the code evaluator
+Lambdas migrate in place rather than being recreated, and the old `code_based_eval_vpc_cidr`
+keeps working. Switch to `isolated_execution_vpc_cidr` when convenient.
+
+Two resources are replaced: the VPC flow log and its CloudWatch log group. A log group's name
+is its identity and AWS has no rename, so taking the new name means a new group, and up to 14
+days of flow-log records for this VPC are lost. Nothing else is destroyed and there is no
+downtime, since the VPC carries no traffic by design and the evaluator Lambdas are untouched.
+Verified against a real 1.1.1 deployment in a scratch account, measured at `d1f37cf`: `2 to
+add, 14 to change, 2 to destroy`, where the 14 changes are tag-only and the 2 destroys are the pair above. The VPC,
+subnets, route tables, security group, both Lambdas and the S3 bucket came out with identical
+IDs, and the VPC still had no default route, no internet gateway, no NAT and an empty
+security group afterwards.
+
+To keep the old log group and its records, drop it from state **before** upgrading. Terraform
+then leaves it alone in AWS and creates the new group alongside it:
+
+```bash
+terraform state rm 'module.langfuse.module.code_based_eval_executor_vpc[0].aws_cloudwatch_log_group.flow_log[0]'
+```
+
+Adjust the `module.langfuse` prefix to your own module label. The upgrade then plans `1 to add,
+0 to destroy` for the flow-log pair, and the old group stays until its retention expires. It is
+no longer managed by Terraform, so remove it yourself when you no longer need it.
 
 AWS Lambda tenant isolation is available in commercial AWS regions except Asia Pacific (New Zealand). It is not available in AWS GovCloud or China regions. When code-based evals are enabled, `name` must be at most 32 characters to fit Lambda and IAM naming limits.
+
+### AI features [#ai-features]
+
+Langfuse's AI features — the in-app agent and Ask AI in the filter search bar — need one
+instance-wide Langfuse AI model. Requires Langfuse `>= 4.25` and Helm chart `>= 2.1.0`, and is
+off by default. See the
+[AI features](https://langfuse.com/security/ai-features) and
+[self-hosting](https://langfuse.com/self-hosting/configuration/langfuse-assistant) docs.
+
+```hcl
+module "langfuse" {
+  # ...
+  app_version = "4.25.0" # or newer
+
+  enable_ai_features   = true
+  ai_features_provider = "bedrock"
+  ai_features_model    = "eu.anthropic.claude-opus-5"
+  enable_in_app_agent  = true
+
+  # Optional: a cheaper model for supplementary calls such as conversation titles
+  ai_features_small_model = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+  # Optional: isolated file and code execution for the agent
+  enable_agent_sandbox_microvm = true
+}
+```
+
+Setting `enable_ai_features` with `ai_features_provider` and `ai_features_model` renders `LANGFUSE_AI_*` on web and
+worker; both call the model, web for Ask AI and conversation titles and worker for agent runs.
+Also set `ai_features_small_model` to a cheaper model: supplementary calls such as
+conversation titles fall back to `ai_features_model` when it is unset, which means paying
+the primary model's price for them. Langfuse Cloud pairs Claude Opus 5 with Claude Haiku 4.5.
+For `bedrock` the module also grants `bedrock:InvokeModel` and
+`bedrock:InvokeModelWithResponseStream` on the Langfuse IAM role — invoke-only, and on every
+model by default, which is cost exposure rather than privilege. Narrow it with
+`ai_features_bedrock_model_arns`.
+
+Activate the model in the account before enabling the AI features. Invoke permission alone is
+not enough: a third-party model needs a Marketplace agreement, and Anthropic models also need
+a one-time use-case form. The module does not manage this, because the form carries your own
+company and use-case details, the agreement is account-wide rather than per deployment, and
+`ai_features_model` takes an inference profile that can span several foundation model IDs. Do
+it in the Bedrock console, or in your own root module:
+
+```hcl
+data "aws_bedrock_foundation_model_agreement_offers" "claude" {
+  model_id = "anthropic.claude-opus-5"
+}
+
+resource "aws_bedrock_use_case_for_model_access" "anthropic" {
+  form_data = base64encode(file("bedrock-use-case.json")) # your company and use case
+}
+
+resource "aws_bedrock_foundation_model_agreement" "claude" {
+  model_id    = "anthropic.claude-opus-5"
+  offer_token = data.aws_bedrock_foundation_model_agreement_offers.claude.offers[0].offer_token
+  depends_on  = [aws_bedrock_use_case_for_model_access.anthropic]
+}
+```
+
+Either way, confirm the model answers in the Bedrock playground before enabling the AI
+features.
+
+The module renders these as `langfuse.aiFeatures.*` Helm values rather than assembling
+`additionalEnv` itself, so the chart owns placement — model on web and worker, sandbox on the
+worker only — and validates the combinations. Chart `2.1.0` is where those values were added;
+apply fails with a clear message if `langfuse_helm_chart_version` is older, because Helm
+ignores unknown values silently and the features would otherwise be quietly absent.
+
+`anthropic` and `openai` need no AWS resources, only a key: set `ai_features_api_key` and,
+if you use a gateway or a non-default endpoint, `ai_features_base_url` (include `/v1` for
+`openai`). The key is stored in the `langfuse` Kubernetes secret and referenced by
+`secretKeyRef`, so it never reaches the Helm values. Bedrock ignores both — it authenticates
+through the AWS credential chain. `LANGFUSE_AI_EXTRA_HEADERS` and
+`LANGFUSE_AI_USE_RESPONSES_API` are not exposed as variables; set them via `additional_env`.
+
+This module writes the AI feature variables itself, so do not also set the Helm chart's own
+AI feature values. Both would render into the same containers, leaving two entries per
+variable; the module's value wins, but only because `additionalEnv` is rendered last.
+
+#### Agent sandbox (Lambda MicroVM)
+
+`enable_agent_sandbox_microvm = true` backs the agent's file and code execution tools with an
+AWS Lambda MicroVM. The module creates an S3 bucket for the image artifact, a build role that
+Lambda assumes during `CreateMicrovmImage`, an unprivileged execution role the guest runs as,
+a deny-all security group and VPC egress network connector in the shared
+[isolated VPC](#code-based-evals), the `RunMicrovm` permissions on the Langfuse IAM role, and
+the `LANGFUSE_IN_APP_AGENT_SANDBOX_*` variables on the worker.
+
+Without the egress connector AWS attaches its default `INTERNET_EGRESS` connector and
+sandboxed code reaches the public internet, so the connector is not optional. Lambda MicroVMs
+are available only in commercial AWS regions, not GovCloud or China, and the region must offer
+them; apply fails otherwise.
+
+The module does **not** build the MicroVM image — that needs a Langfuse checkout, Docker and
+pnpm. After apply, from a [Langfuse](https://github.com/langfuse/langfuse) checkout at the
+same version you deploy:
+
+```bash
+export AWS_PROFILE=<profile>
+terraform output -json agent_sandbox_build_env \
+  | jq -r 'to_entries[] | "export \(.key)=\(.value)"' > .env && source .env
+
+bash packages/in-app-agent-sandbox-runtime/build-microvm-image.sh
+```
+
+The identity running the script needs `s3:PutObject` on the artifact bucket,
+`lambda:CreateMicrovmImage` / `ListMicrovmImages` / `GetMicrovmImage` / `UpdateMicrovmImage`,
+and `iam:PassRole` on the build role. Without that `iam:PassRole`, `CreateMicrovmImage`
+returns `AccessDeniedException`.
+
+Rebuild the image whenever you upgrade Langfuse, and build it from the same release you
+deploy. Treat the image as part of the deployment rather than one-time setup: the worker does
+not currently verify that the guest runtime matches its own version, so an image left behind
+by an upgrade surfaces as file or bash tools misbehaving rather than as a clear error.
 
 ### Customizing Resources
 
@@ -263,6 +411,7 @@ This module creates a complete Langfuse stack with the following components:
 - TLS certificates and Route53 DNS configuration
 - Required IAM roles and security groups
 - Optional tenant-isolated AWS Lambda executors for code-based evals
+- Optional AWS Lambda MicroVM sandbox for the in-app agent's code execution tools
 - AWS Load Balancer Controller for ingress
 - EFS CSI Driver for persistent storage
 
@@ -273,7 +422,7 @@ The module deploys the Langfuse Helm chart v2 (`langfuse_helm_chart_version`), w
 ```hcl
 module "langfuse" {
   # ...
-  app_version = "4.24.0"
+  app_version = "4.25.0"
 }
 ```
 
@@ -328,7 +477,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | Name       | Version   |
 |------------|-----------|
 | terraform  | >= 1.9    |
-| aws        | >= 6.30, < 7.0 |
+| aws        | >= 6.61, < 7.0 |
 | archive    | ~> 2.8    |
 | kubernetes | ~> 2.0    |
 | helm       | ~> 2.7    |
@@ -337,7 +486,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 
 | Name       | Version   |
 |------------|-----------|
-| aws        | >= 6.30, < 7.0 |
+| aws        | >= 6.61, < 7.0 |
 | archive    | ~> 2.8    |
 | kubernetes | ~> 2.0    |
 | helm       | ~> 2.7    |
@@ -358,6 +507,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | aws_iam_role.eks                        | resource |
 | aws_iam_role.fargate                    | resource |
 | aws_lambda_function.code_based_eval_executor | resource |
+| aws_lambdacore_network_connector.agent_sandbox_egress | resource |
 | aws_security_group.eks                  | resource |
 | aws_security_group.postgres             | resource |
 | aws_security_group.redis                | resource |
@@ -388,7 +538,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | postgres_max_capacity             | Maximum ACU capacity for PostgreSQL Serverless v2                                                                                                        | number       | 2.0                                                                                  |    no    |
 | cache_node_type                   | ElastiCache node type                                                                                                                                    | string       | "cache.t4g.small"                                                                    |    no    |
 | cache_instance_count              | Number of ElastiCache instances                                                                                                                          | number       | 1                                                                                    |    no    |
-| langfuse_helm_chart_version       | Version of the Langfuse Helm chart to deploy                                                                                                             | string       | "2.0.0"                                                                              |    no    |
+| langfuse_helm_chart_version       | Version of the Langfuse Helm chart to deploy; the AI features need >= 2.1.0                                                                                                             | string       | "2.1.0"                                                                              |    no    |
 | app_version                       | Langfuse application version (Docker image tag) to deploy. Defaults to the latest release at the time this module version was published.                 | string       | "4.14.0"                                                                             |    no    |
 | langfuse_cpu                      | CPU allocation for Langfuse containers                                                                                                                   | string       | "2"                                                                                  |    no    |
 | langfuse_memory                   | Memory allocation for Langfuse containers                                                                                                                | string       | "4Gi"                                                                                |    no    |
@@ -414,9 +564,22 @@ A destroy that appears stuck is usually just working through these — do **not*
 | redis_snapshot_retention_limit    | Days of automatic Redis snapshots to keep (0 disables backups)                                                                                           | number       | 1                                                                                    |    no    |
 | redis_snapshot_window             | Daily UTC window for the automatic Redis snapshot                                                                                                        | string       | "03:00-04:00"                                                                        |    no    |
 | enable_code_based_eval_executors  | Create isolated Lambda executors and configure Langfuse code evals                                                                                        | bool         | false                                                                                |    no    |
-| code_based_eval_vpc_cidr          | CIDR for the dedicated code eval executor VPC                                                                                                             | string       | "10.1.0.0/24"                                                                        |    no    |
+| code_based_eval_vpc_cidr          | Deprecated 1.1.1 name for isolated_execution_vpc_cidr, still honoured                                                                                       | string       | null                                                                                 |    no    |
+| isolated_execution_vpc_cidr       | CIDR for the shared isolated VPC that runs untrusted code (code evaluators and the agent sandbox)                                                         | string       | "10.1.0.0/24"                                                                        |    no    |
 | code_based_eval_executor_lambda_settings | Per-runtime Lambda memory, timeout, and reserved concurrency settings                                                                             | object       | See `variables.tf`                                                                   |    no    |
 | code_eval_execution_worker_concurrency | Code eval queue concurrency per worker                                                                                                               | number       | 5                                                                                    |    no    |
+| enable_ai_features                | Render the chart's AI feature values and grant Bedrock invoke. Requires a provider and model                                                                | bool         | false                                                                                |    no    |
+| ai_features_provider              | Provider for the instance-wide Langfuse AI model: bedrock, anthropic, or openai                                                                            | string       | null                                                                                 |    no    |
+| ai_features_model                 | Primary model for the AI features (LANGFUSE_AI_MODEL)                                                                                                     | string       | null                                                                                 |    no    |
+| ai_features_small_model           | Optional model for supplementary calls such as conversation titles                                                                                        | string       | null                                                                                 |    no    |
+| ai_features_api_key               | API key for the anthropic and openai providers, stored in the langfuse Kubernetes secret                                                                   | string       | null                                                                                 |    no    |
+| ai_features_base_url              | Base URL for the anthropic and openai providers; include /v1 for openai                                                                                    | string       | null                                                                                 |    no    |
+| ai_features_small_model           | Cheaper model for supplementary calls such as conversation titles                                                                                          | string       | null                                                                                 |    no    |
+| ai_features_bedrock_region        | Region for Bedrock invocations, defaults to the deployment region                                                                                         | string       | null                                                                                 |    no    |
+| ai_features_bedrock_model_arns    | Bedrock model ARNs the Langfuse role may invoke                                                                                                           | list(string) | ["*"]                                                                                |    no    |
+| enable_in_app_agent               | Set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker. Requires enable_ai_features and Langfuse >= 4.25                                                     | bool         | false                                                                                |    no    |
+| enable_agent_sandbox_microvm      | Create the Lambda MicroVM sandbox for the in-app agent's code execution tools. Image build is out of band                                                  | bool         | false                                                                                |    no    |
+| agent_sandbox_image_name          | Lambda MicroVM image name used to construct the image ARN                                                                                                 | string       | "langfuse-in-app-agent-sandbox"                                                      |    no    |
 
 ## Outputs
 

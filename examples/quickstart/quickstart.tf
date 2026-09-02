@@ -28,11 +28,20 @@ module "langfuse" {
   cache_instance_count = 2
 
   # Optional: Configure Langfuse Helm chart version
-  langfuse_helm_chart_version = "2.0.2"
+  langfuse_helm_chart_version = "2.1.0"
 
   # Optional: Pin the Langfuse application version (defaults to the latest
   # release at the time this module version was published)
-  app_version = "4.24.0"
+  app_version = "4.25.0"
+
+  # Optional: Langfuse AI features (in-app agent, Ask AI). Requires app_version
+  # >= 4.25. The agent sandbox image is built out of band after apply.
+  # enable_ai_features           = true
+  # ai_features_provider         = "bedrock"
+  # ai_features_model            = "eu.anthropic.claude-opus-5"
+  # ai_features_small_model      = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  # enable_in_app_agent          = true
+  # enable_agent_sandbox_microvm = true
 }
 
 provider "kubernetes" {

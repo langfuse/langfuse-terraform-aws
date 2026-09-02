@@ -4,8 +4,8 @@ variable "name" {
   default     = "langfuse"
 
   validation {
-    condition     = !var.enable_code_based_eval_executors || length(var.name) <= 32
-    error_message = "name must be at most 32 characters when code-based eval executors are enabled."
+    condition     = !(var.enable_code_based_eval_executors || var.enable_agent_sandbox_microvm) || length(var.name) <= 32
+    error_message = "name must be at most 32 characters when code-based eval executors or the agent sandbox are enabled, to fit Lambda and IAM naming limits."
   }
 }
 
@@ -159,15 +159,28 @@ variable "use_single_nat_gateway" {
 }
 
 variable "langfuse_helm_chart_version" {
-  description = "Version of the Langfuse Helm chart to deploy"
+  description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.0 or newer, which is where langfuse.aiFeatures.* was added."
   type        = string
-  default     = "2.0.2"
+  default     = "2.1.0"
+
+  validation {
+    # try() keeps a non-semver tag working: a deliberate custom build is left
+    # alone rather than rejected. It is also required rather than cosmetic,
+    # because || does not short-circuit here, so the regex is evaluated even
+    # when the version does not match it.
+    condition = !var.enable_ai_features || (
+      try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) > 2 ||
+      (try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) == 2 &&
+      try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) >= 1)
+    )
+    error_message = "The AI features need langfuse_helm_chart_version 2.1.0 or newer, which is where langfuse.aiFeatures.* was added. Helm ignores unknown values silently, so an older chart would deploy without them and report nothing."
+  }
 }
 
 variable "app_version" {
-  description = "Langfuse application version (Docker image tag) to deploy, e.g. \"4.24.0\". Defaults to the latest Langfuse release at the time this module version was published. See https://github.com/langfuse/langfuse/releases."
+  description = "Langfuse application version (Docker image tag) to deploy, e.g. \"4.25.0\". Defaults to the latest Langfuse release at the time this module version was published. The AI features require >= 4.25. That floor is written without a patch component on purpose, so update-langfuse-versions.yml cannot rewrite it when it moves this default. See https://github.com/langfuse/langfuse/releases."
   type        = string
-  default     = "4.24.0"
+  default     = "4.25.0"
 }
 
 variable "helm_release_timeout" {
@@ -342,17 +355,28 @@ variable "enable_code_based_eval_executors" {
 }
 
 variable "code_based_eval_vpc_cidr" {
-  description = "CIDR block for the dedicated isolated code-based eval executor VPC."
+  description = "Deprecated: renamed to isolated_execution_vpc_cidr in 1.2.0, because the VPC is now shared with the agent sandbox. Still honoured when set. Remove it and use isolated_execution_vpc_cidr instead."
   type        = string
-  default     = "10.1.0.0/24"
+  default     = null
 
   validation {
-    condition = (
-      can(cidrnetmask(var.code_based_eval_vpc_cidr)) &&
-      can(cidrsubnet(var.code_based_eval_vpc_cidr, 2, 2)) &&
-      can(regex("/(?:[0-9]|1[0-9]|2[0-6])$", var.code_based_eval_vpc_cidr))
+    condition     = var.code_based_eval_vpc_cidr == null || var.isolated_execution_vpc_cidr == null
+    error_message = "Set either code_based_eval_vpc_cidr (deprecated) or isolated_execution_vpc_cidr, not both."
+  }
+}
+
+variable "isolated_execution_vpc_cidr" {
+  description = "CIDR block for the shared isolated VPC that runs untrusted code: the code evaluator Lambdas and the agent sandbox MicroVMs. Defaults to 10.1.0.0/24. Must not overlap vpc_cidr. Null rather than a literal default so the deprecated code_based_eval_vpc_cidr can be told apart from this one being left alone."
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.isolated_execution_vpc_cidr == null || (
+      can(cidrnetmask(var.isolated_execution_vpc_cidr)) &&
+      can(cidrsubnet(var.isolated_execution_vpc_cidr, 2, 2)) &&
+      can(regex("/(?:[0-9]|1[0-9]|2[0-6])$", var.isolated_execution_vpc_cidr))
     )
-    error_message = "code_based_eval_vpc_cidr must be a valid IPv4 CIDR with a /26 or shorter prefix so it can contain three AWS-valid subnets."
+    error_message = "isolated_execution_vpc_cidr must be a valid IPv4 CIDR with a /26 or shorter prefix so it can contain three AWS-valid subnets."
   }
 }
 
@@ -405,6 +429,117 @@ variable "code_eval_execution_worker_concurrency" {
     condition     = var.code_eval_execution_worker_concurrency > 0 && floor(var.code_eval_execution_worker_concurrency) == var.code_eval_execution_worker_concurrency
     error_message = "code_eval_execution_worker_concurrency must be a positive integer."
   }
+}
+
+# AI features (in-app agent, Ask AI). See https://langfuse.com/security/ai-features
+variable "enable_ai_features" {
+  description = "Render the chart's langfuse.aiFeatures values and grant Bedrock invoke on the Langfuse role. Requires ai_features_provider and ai_features_model, Langfuse >= 4.25 and Helm chart >= 2.1.0. Terraform-only: there is no matching application environment variable, and AI features are additionally gated per organization inside Langfuse."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_ai_features || (var.ai_features_provider != null && var.ai_features_model != null)
+    error_message = "ai_features_provider and ai_features_model are required when enable_ai_features is true."
+  }
+
+  validation {
+    condition     = var.enable_ai_features || var.ai_features_provider == null
+    error_message = "ai_features_provider is set but enable_ai_features is false, so nothing would be rendered. Set enable_ai_features to true, or remove the provider."
+  }
+}
+
+variable "ai_features_provider" {
+  description = "Provider for the instance-wide Langfuse AI model, set as LANGFUSE_AI_PROVIDER. Only \"bedrock\" needs AWS resources from this module; \"anthropic\" and \"openai\" additionally need LANGFUSE_AI_API_KEY via additional_env. Leave null to leave the AI features unconfigured."
+  type        = string
+  default     = null
+
+  validation {
+    # Terraform 1.9 evaluates both sides of the ||, so the fallback has to be a
+    # non-empty string: coalesce rejects "" as well as null.
+    condition     = var.ai_features_provider == null || contains(["bedrock", "anthropic", "openai"], coalesce(var.ai_features_provider, "unset"))
+    error_message = "ai_features_provider must be one of \"bedrock\", \"anthropic\", or \"openai\"."
+  }
+
+}
+
+variable "ai_features_model" {
+  description = "Primary model for the AI features, set as LANGFUSE_AI_MODEL, for example \"eu.anthropic.claude-opus-5\". Claude Opus 5 is the recommended model. For Bedrock, activate the model in the Bedrock model catalog first."
+  type        = string
+  default     = null
+}
+
+variable "ai_features_small_model" {
+  description = "Optional model for supplementary calls such as conversation titles, set as LANGFUSE_AI_SMALL_MODEL. Falls back to ai_features_model when unset."
+  type        = string
+  default     = null
+}
+
+variable "ai_features_api_key" {
+  description = "API key for the anthropic and openai providers, stored in the langfuse Kubernetes secret and referenced by LANGFUSE_AI_API_KEY. Bedrock authenticates through the AWS credential chain instead and does not use it."
+  type        = string
+  default     = null
+  sensitive   = true
+
+  validation {
+    condition     = var.ai_features_provider == null || var.ai_features_provider == "bedrock" || var.ai_features_api_key != null
+    error_message = "ai_features_api_key is required for the anthropic and openai providers. Bedrock uses the AWS credential chain and needs no key."
+  }
+
+  validation {
+    condition     = var.ai_features_provider != "bedrock" || var.ai_features_api_key == null
+    error_message = "ai_features_api_key is not used by the bedrock provider, which authenticates through the AWS credential chain. Remove it, or switch provider."
+  }
+}
+
+variable "ai_features_base_url" {
+  description = "Base URL for the anthropic and openai providers, set as LANGFUSE_AI_BASE_URL. For openai include the /v1 suffix. Leave null to use the provider default. Unused by bedrock."
+  type        = string
+  default     = null
+}
+
+variable "ai_features_bedrock_region" {
+  description = "Region for Bedrock model invocations, set as LANGFUSE_AI_AWS_BEDROCK_REGION. Defaults to the region this module deploys into."
+  type        = string
+  default     = null
+}
+
+variable "ai_features_bedrock_model_arns" {
+  description = "Bedrock model ARNs the Langfuse role may invoke. The default allows every model, which is cost exposure rather than privilege; narrow it to pin specific models or inference profiles."
+  type        = list(string)
+  default     = ["*"]
+
+  validation {
+    condition     = length(var.ai_features_bedrock_model_arns) > 0
+    error_message = "ai_features_bedrock_model_arns must not be empty."
+  }
+}
+
+variable "enable_in_app_agent" {
+  description = "Set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker. Requires ai_features_provider and ai_features_model, and Langfuse >= 4.25."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_in_app_agent || var.enable_ai_features
+    error_message = "enable_ai_features must be true when enable_in_app_agent is true; the agent runs on the instance-wide Langfuse AI model."
+  }
+}
+
+variable "enable_agent_sandbox_microvm" {
+  description = "Create the AWS Lambda MicroVM sandbox that backs the in-app agent's file and code execution tools, and set LANGFUSE_IN_APP_AGENT_SANDBOX_* on the worker. The MicroVM image is built out of band after apply; see the README. Available only in commercial AWS regions."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_agent_sandbox_microvm || var.enable_in_app_agent
+    error_message = "enable_in_app_agent must be true when enable_agent_sandbox_microvm is true; the sandbox is only used by the in-app agent."
+  }
+}
+
+variable "agent_sandbox_image_name" {
+  description = "Lambda MicroVM image name. The image ARN is constructed from it, so Terraform can grant permissions before the image exists; create the image with build-microvm-image.sh after apply using the agent_sandbox_build_env output."
+  type        = string
+  default     = "langfuse-in-app-agent-sandbox"
 }
 
 # Additional environment variables

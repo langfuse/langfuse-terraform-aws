@@ -121,6 +121,14 @@ EOT
 
   clickhouse_values = local.deploy_clickhouse ? local.clickhouse_internal_values : local.clickhouse_external_values
 
+  # Only whether a key was supplied, which is not itself secret. The value never
+  # enters these values: it goes to the langfuse Kubernetes secret and is
+  # referenced by secretKeyRef, so the rendered document stays non-sensitive
+  # either way. nonsensitive() is needed because testing the variable directly
+  # in a template condition would mark the whole document sensitive and hide
+  # every unrelated environment variable from the plan diff.
+  ai_features_api_key_set = nonsensitive(var.ai_features_api_key != null)
+
   additional_env_values = !var.enable_code_based_eval_executors && length(var.additional_env) == 0 ? "" : <<EOT
 langfuse:
   additionalEnv:
@@ -162,6 +170,41 @@ langfuse:
           value: ${jsonencode(tostring(var.code_eval_execution_worker_concurrency))}
         - name: QUEUE_CONSUMER_CODE_EVAL_EXECUTION_QUEUE_IS_ENABLED
           value: "true"
+EOT
+
+  # The chart places the model on web and worker and the sandbox on the worker
+  # only, and validates the combinations, so none of that is reimplemented here.
+  # Requires chart 2.1.0, enforced by a validation on langfuse_helm_chart_version.
+  ai_features_values = !var.enable_ai_features ? "" : <<EOT
+langfuse:
+  aiFeatures:
+    provider: ${jsonencode(var.ai_features_provider)}
+    model: ${jsonencode(var.ai_features_model)}
+%{if var.ai_features_small_model != null~}
+    smallModel: ${jsonencode(var.ai_features_small_model)}
+%{endif~}
+%{if var.ai_features_provider == "bedrock"~}
+    bedrockRegion: ${jsonencode(coalesce(var.ai_features_bedrock_region, data.aws_region.current.region))}
+%{endif~}
+%{if var.ai_features_base_url != null~}
+    baseUrl: ${jsonencode(var.ai_features_base_url)}
+%{endif~}
+%{if local.ai_features_api_key_set~}
+    apiKey:
+      secretKeyRef:
+        name: langfuse
+        key: ai-features-api-key
+%{endif~}
+    inAppAgent:
+      enabled: ${var.enable_in_app_agent}
+%{if var.enable_agent_sandbox_microvm~}
+      sandbox:
+        provider: "lambda-microvm"
+        imageIdentifier: ${jsonencode(local.agent_sandbox_microvm_image_arn)}
+        executionRoleArn: ${jsonencode(one(aws_iam_role.agent_sandbox_execution[*].arn))}
+        region: ${jsonencode(data.aws_region.current.region)}
+        egressNetworkConnectorArn: ${jsonencode(one(aws_lambdacore_network_connector.agent_sandbox_egress[*].arn))}
+%{endif~}
 EOT
 
   ingress_values    = <<EOT
@@ -250,14 +293,18 @@ resource "kubernetes_secret" "langfuse" {
     namespace = kubernetes_namespace.langfuse.metadata[0].name
   }
 
-  data = {
+  # Merged rather than always present: an unset key adds nothing, so existing
+  # installations see no change to this secret.
+  data = merge({
     "redis-password"      = random_password.redis_password.result
     "postgres-password"   = random_password.postgres_password.result
     "salt"                = random_bytes.salt.base64
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
     "clickhouse-password" = local.deploy_clickhouse ? random_password.clickhouse_password.result : var.external_clickhouse_password
     "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
-  }
+    },
+    var.ai_features_api_key == null ? {} : { "ai-features-api-key" = var.ai_features_api_key }
+  )
 }
 
 resource "helm_release" "langfuse" {
@@ -279,6 +326,7 @@ resource "helm_release" "langfuse" {
     local.encryption_values,
     local.additional_env_values,
     local.code_eval_worker_values,
+    local.ai_features_values,
     local.clickhouse_overwrite_values,
   ])
 
@@ -287,6 +335,8 @@ resource "helm_release" "langfuse" {
     aws_iam_role.langfuse_irsa,
     aws_iam_role_policy.langfuse_s3_access,
     aws_iam_role_policy.langfuse_code_based_eval_executor_invoke,
+    aws_iam_role_policy.langfuse_agent_sandbox,
+    aws_iam_role_policy.langfuse_ai_features_bedrock,
     aws_eks_fargate_profile.namespaces,
     kubernetes_persistent_volume.clickhouse_data,
     kubernetes_persistent_volume.clickhouse_keeper,
@@ -302,6 +352,7 @@ resource "helm_release" "langfuse" {
       condition     = var.external_clickhouse == null || var.external_clickhouse_password != ""
       error_message = "external_clickhouse_password must be set when external_clickhouse is configured."
     }
+
   }
 }
 

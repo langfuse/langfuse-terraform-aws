@@ -23,37 +23,6 @@ locals {
 
 data "aws_partition" "current" {}
 
-module "code_based_eval_executor_vpc" {
-  count = var.enable_code_based_eval_executors ? 1 : 0
-
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
-
-  name = "${var.name}-vpc-code-based-eval"
-  cidr = var.code_based_eval_vpc_cidr
-
-  azs             = local.azs
-  private_subnets = [for index, _ in local.azs : cidrsubnet(var.code_based_eval_vpc_cidr, 2, index)]
-
-  create_igw         = false
-  enable_nat_gateway = false
-  # AmazonProvidedDNS bypasses security groups and can otherwise be used to
-  # exfiltrate data through attacker-controlled DNS names.
-  enable_dns_support   = false
-  enable_dns_hostnames = false
-
-  enable_flow_log                                 = true
-  create_flow_log_cloudwatch_iam_role             = true
-  create_flow_log_cloudwatch_log_group            = true
-  flow_log_cloudwatch_log_group_name_prefix       = "${var.name}-code-based-eval-"
-  flow_log_cloudwatch_log_group_retention_in_days = 14
-  flow_log_cloudwatch_log_group_class             = "INFREQUENT_ACCESS"
-
-  tags = {
-    Name = "${local.tag_name} Code-Based Eval"
-  }
-}
-
 # This is a resource rather than a data source so the packages are created
 # during apply and work when plan and apply run on different machines.
 resource "archive_file" "code_based_eval_executor" {
@@ -88,7 +57,7 @@ resource "aws_security_group" "code_based_eval_executor_lambda" {
 
   name        = "${var.name}-code-based-eval-executor-lambda"
   description = "No-ingress/no-egress security group for code-based eval executor Lambdas"
-  vpc_id      = module.code_based_eval_executor_vpc[0].vpc_id
+  vpc_id      = module.isolated_execution_vpc[0].vpc_id
 
   ingress = []
   egress  = []
@@ -189,7 +158,7 @@ resource "aws_lambda_function" "code_based_eval_executor" {
 
   vpc_config {
     security_group_ids = [aws_security_group.code_based_eval_executor_lambda[0].id]
-    subnet_ids         = module.code_based_eval_executor_vpc[0].private_subnets
+    subnet_ids         = module.isolated_execution_vpc[0].private_subnets
   }
 
   depends_on = [
