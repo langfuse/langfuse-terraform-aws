@@ -439,6 +439,8 @@ The deployment can be sized with the `clickhouse_replicas`, `clickhouse_cpu`, `c
 
 To use an existing ClickHouse instead — for example [ClickHouse Cloud](https://clickhouse.com/cloud) — set `external_clickhouse`. The module then skips cert-manager, the operator, the in-cluster ClickHouse, and the entire EFS file system (which only exists for ClickHouse storage). See [examples/external-clickhouse](examples/external-clickhouse/external-clickhouse.tf) for a full example.
 
+Langfuse requires both PostgreSQL and ClickHouse to use UTC. If you customize either data store or connect an external ClickHouse instance, verify its timezone before deployment. See the [timezone requirements and verification steps](https://langfuse.com/faq/all/self-hosting-timezone-errors).
+
 ```hcl
 module "langfuse" {
   source = "github.com/langfuse/langfuse-terraform-aws"
