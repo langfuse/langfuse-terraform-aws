@@ -128,6 +128,12 @@ variable "postgres_version" {
   default     = "15.12"
 }
 
+variable "postgres_cluster_parameter_group_name" {
+  description = "Name of an externally managed Aurora PostgreSQL cluster parameter group"
+  type        = string
+  default     = null
+}
+
 variable "cache_node_type" {
   description = "ElastiCache node type"
   type        = string
