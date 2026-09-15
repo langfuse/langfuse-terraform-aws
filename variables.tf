@@ -178,9 +178,9 @@ variable "langfuse_helm_chart_version" {
 }
 
 variable "app_version" {
-  description = "Langfuse application version (Docker image tag) to deploy, e.g. \"4.25.0\". Defaults to the latest Langfuse release at the time this module version was published. The AI features require >= 4.25. That floor is written without a patch component on purpose, so update-langfuse-versions.yml cannot rewrite it when it moves this default. See https://github.com/langfuse/langfuse/releases."
+  description = "Langfuse application version (Docker image tag) to deploy, e.g. \"4.35.0\". Defaults to the latest Langfuse release at the time this module version was published. The AI features require >= 4.25. That floor is written without a patch component on purpose, so update-langfuse-versions.yml cannot rewrite it when it moves this default. See https://github.com/langfuse/langfuse/releases."
   type        = string
-  default     = "4.25.0"
+  default     = "4.35.0"
 }
 
 variable "helm_release_timeout" {
