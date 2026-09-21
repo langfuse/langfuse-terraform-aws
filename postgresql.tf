@@ -4,8 +4,8 @@ resource "aws_security_group" "postgres" {
   vpc_id      = local.vpc_id
 
   ingress {
-    from_port   = 5432
-    to_port     = 5432
+    from_port   = var.postgres_port
+    to_port     = var.postgres_port
     protocol    = "tcp"
     cidr_blocks = [local.vpc_cidr_block]
   }
@@ -57,6 +57,7 @@ resource "aws_rds_cluster" "postgres" {
   backup_retention_period      = 7
   preferred_backup_window      = "03:00-04:00"
   preferred_maintenance_window = "mon:04:00-mon:05:00"
+  port                         = var.postgres_port
 
   serverlessv2_scaling_configuration {
     min_capacity = var.postgres_min_capacity
