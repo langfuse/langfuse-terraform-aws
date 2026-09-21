@@ -159,7 +159,7 @@ variable "use_single_nat_gateway" {
 }
 
 variable "langfuse_helm_chart_version" {
-  description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.1 or newer, which is where langfuse.aiFeatures.* was added."
+  description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.0 or newer, which is where langfuse.aiFeatures.* was added."
   type        = string
   default     = "2.1.1"
 
@@ -173,7 +173,7 @@ variable "langfuse_helm_chart_version" {
       (try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) == 2 &&
       try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) >= 1)
     )
-    error_message = "The AI features need langfuse_helm_chart_version 2.1.1 or newer, which is where langfuse.aiFeatures.* was added. Helm ignores unknown values silently, so an older chart would deploy without them and report nothing."
+    error_message = "The AI features need langfuse_helm_chart_version 2.1.0 or newer, which is where langfuse.aiFeatures.* was added. Helm ignores unknown values silently, so an older chart would deploy without them and report nothing."
   }
 }
 

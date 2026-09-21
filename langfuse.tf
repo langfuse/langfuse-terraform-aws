@@ -174,7 +174,7 @@ EOT
 
   # The chart places the model on web and worker and the sandbox on the worker
   # only, and validates the combinations, so none of that is reimplemented here.
-  # Requires chart 2.1.1, enforced by a validation on langfuse_helm_chart_version.
+  # Requires chart 2.1.0, enforced by a validation on langfuse_helm_chart_version.
   ai_features_values = !var.enable_ai_features ? "" : <<EOT
 langfuse:
   aiFeatures:
