@@ -11,7 +11,7 @@ This module aims to provide a production-ready, secure, and scalable deployment 
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.1"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.2"
 
   domain = "langfuse.example.com"
 
@@ -40,11 +40,11 @@ module "langfuse" {
   cache_instance_count = 2
 
   # Optional: Configure Langfuse Helm chart version
-  langfuse_helm_chart_version = "2.1.0"
+  langfuse_helm_chart_version = "2.1.1"
 
   # Optional: Pin the Langfuse application version. Defaults to the latest
   # release at the time this module version was published.
-  app_version = "4.35.0"
+  app_version = "4.38.0"
   
   # Optional: Activate additional log tables in ClickHouse. Will increase EFS costs, but may aid in debugging.
   enable_clickhouse_log_tables = false  # Set to true to have additional logs.
@@ -163,7 +163,7 @@ If you already have a VPC and want to deploy Langfuse into it, you can provide t
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.1"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.2"
 
   domain = "langfuse.example.com"
 
@@ -277,7 +277,7 @@ off by default. See the
 ```hcl
 module "langfuse" {
   # ...
-  app_version = "4.35.0" # or newer
+  app_version = "4.38.0" # or newer
 
   enable_ai_features   = true
   ai_features_provider = "bedrock"
@@ -388,7 +388,7 @@ For example, to increase ClickHouse Keeper resources:
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.1"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.2"
 
   domain = "langfuse.example.com"
 
@@ -422,7 +422,7 @@ The module deploys the Langfuse Helm chart v2 (`langfuse_helm_chart_version`), w
 ```hcl
 module "langfuse" {
   # ...
-  app_version = "4.35.0"
+  app_version = "4.38.0"
 }
 ```
 
@@ -540,7 +540,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | postgres_max_capacity             | Maximum ACU capacity for PostgreSQL Serverless v2                                                                                                        | number       | 2.0                                                                                  |    no    |
 | cache_node_type                   | ElastiCache node type                                                                                                                                    | string       | "cache.t4g.small"                                                                    |    no    |
 | cache_instance_count              | Number of ElastiCache instances                                                                                                                          | number       | 1                                                                                    |    no    |
-| langfuse_helm_chart_version       | Version of the Langfuse Helm chart to deploy; the AI features need >= 2.1.0                                                                                                             | string       | "2.1.0"                                                                              |    no    |
+| langfuse_helm_chart_version       | Version of the Langfuse Helm chart to deploy; the AI features need >= 2.1.0                                                                                                             | string       | "2.1.1"                                                                              |    no    |
 | app_version                       | Langfuse application version (Docker image tag) to deploy. Defaults to the latest release at the time this module version was published.                 | string       | "4.14.0"                                                                             |    no    |
 | langfuse_cpu                      | CPU allocation for Langfuse containers                                                                                                                   | string       | "2"                                                                                  |    no    |
 | langfuse_memory                   | Memory allocation for Langfuse containers                                                                                                                | string       | "4Gi"                                                                                |    no    |
