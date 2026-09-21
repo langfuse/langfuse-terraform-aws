@@ -11,7 +11,7 @@ This module aims to provide a production-ready, secure, and scalable deployment 
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.2"
+0  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.2"
 
   domain = "langfuse.example.com"
 
@@ -269,7 +269,7 @@ AWS Lambda tenant isolation is available in commercial AWS regions except Asia P
 ### AI features [#ai-features]
 
 Langfuse's AI features — the in-app agent and Ask AI in the filter search bar — need one
-instance-wide Langfuse AI model. Requires Langfuse `>= 4.25` and Helm chart `>= 2.1.1`, and is
+instance-wide Langfuse AI model. Requires Langfuse `>= 4.25` and Helm chart `>= 2.1.0`, and is
 off by default. See the
 [AI features](https://langfuse.com/security/ai-features) and
 [self-hosting](https://langfuse.com/self-hosting/configuration/langfuse-assistant) docs.
@@ -330,7 +330,7 @@ features.
 
 The module renders these as `langfuse.aiFeatures.*` Helm values rather than assembling
 `additionalEnv` itself, so the chart owns placement — model on web and worker, sandbox on the
-worker only — and validates the combinations. Chart `2.1.1` is where those values were added;
+worker only — and validates the combinations. Chart `2.1.0` is where those values were added;
 apply fails with a clear message if `langfuse_helm_chart_version` is older, because Helm
 ignores unknown values silently and the features would otherwise be quietly absent.
 
