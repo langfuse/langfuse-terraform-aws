@@ -49,6 +49,11 @@ module "langfuse" {
   # Optional: Activate additional log tables in ClickHouse. Will increase EFS costs, but may aid in debugging.
   enable_clickhouse_log_tables = false  # Set to true to have additional logs.
 
+  # Optional: EFS throughput mode for ClickHouse storage. Elastic (default) bills per GB
+  # read and written; provisioned is usually cheaper for a steady write load.
+  efs_throughput_mode                 = "provisioned"
+  efs_provisioned_throughput_in_mibps = 20
+
   # Optional: Enable tenant- and network-isolated code evaluator execution.
   enable_code_based_eval_executors = true
 
@@ -559,6 +564,8 @@ A destroy that appears stuck is usually just working through these — do **not*
 | external_clickhouse               | Use an external ClickHouse (e.g. ClickHouse Cloud) instead of the in-cluster deployment. See [External ClickHouse](#external-clickhouse-bring-your-own). | object       | null                                                                                 |    no    |
 | external_clickhouse_password      | Password for the external ClickHouse user                                                                                                                | string       | ""                                                                                   |    no    |
 | enable_clickhouse_log_tables      | Whether to enable Clickhouse logging tables. Having them active produces a high base-load on the EFS filesystem.                                         | bool         | false                                                                                |    no    |
+| efs_throughput_mode               | EFS throughput mode for ClickHouse storage: elastic, provisioned or bursting                                                                             | string       | "elastic"                                                                            |    no    |
+| efs_provisioned_throughput_in_mibps | Provisioned EFS throughput in MiB/s. Required when efs_throughput_mode is provisioned                                                                    | number       | null                                                                                 |    no    |
 | alb_scheme                        | ALB scheme                                                                                                                                               | string       | "internet-facing"                                                                    |    no    |
 | ingress_inbound_cidrs             | Allowed CIDR blocks for ingress alb                                                                                                                      | list(string) | ["0.0.0.0/0"]                                                                        |    no    |
 | redis_at_rest_encryption          | At rest encryption enabled for the redis cluster                                                                                                         | bool         | false                                                                                |    no    |
