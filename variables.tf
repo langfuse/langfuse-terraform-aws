@@ -104,6 +104,28 @@ variable "enable_clickhouse_log_tables" {
   default     = false
 }
 
+variable "efs_throughput_mode" {
+  description = "Throughput mode for the EFS file system backing ClickHouse and ClickHouse Keeper. One of elastic, provisioned or bursting. Elastic bills per GB read and written; provisioned bills a fixed rate for efs_provisioned_throughput_in_mibps and is usually cheaper for steady ClickHouse write load."
+  type        = string
+  default     = "elastic"
+
+  validation {
+    condition     = contains(["elastic", "provisioned", "bursting"], var.efs_throughput_mode)
+    error_message = "efs_throughput_mode must be one of elastic, provisioned or bursting."
+  }
+}
+
+variable "efs_provisioned_throughput_in_mibps" {
+  description = "Provisioned throughput in MiB/s for the EFS file system. Required when efs_throughput_mode is provisioned, ignored otherwise."
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.efs_throughput_mode != "provisioned" || (var.efs_provisioned_throughput_in_mibps != null && try(var.efs_provisioned_throughput_in_mibps >= 1, false))
+    error_message = "efs_provisioned_throughput_in_mibps must be set to at least 1 when efs_throughput_mode is provisioned."
+  }
+}
+
 variable "postgres_instance_count" {
   description = "Number of PostgreSQL instances to create"
   type        = number

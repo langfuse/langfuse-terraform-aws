@@ -8,7 +8,9 @@ resource "aws_efs_file_system" "langfuse" {
 
   creation_token  = "${var.name}-efs"
   encrypted       = true
-  throughput_mode = "elastic"
+  throughput_mode = var.efs_throughput_mode
+
+  provisioned_throughput_in_mibps = var.efs_throughput_mode == "provisioned" ? var.efs_provisioned_throughput_in_mibps : null
 
   tags = {
     Name = local.tag_name
