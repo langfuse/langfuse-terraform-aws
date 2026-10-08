@@ -36,7 +36,7 @@ langfuse:
     replicas: ${var.langfuse_worker_replicas}
 postgresql:
   deploy: false
-  host: ${aws_rds_cluster.postgres.endpoint}:5432
+  host: ${aws_rds_cluster.postgres.endpoint}:${aws_rds_cluster.postgres.port}
   auth:
     username: langfuse
     database: langfuse
