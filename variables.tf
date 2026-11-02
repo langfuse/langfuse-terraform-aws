@@ -183,7 +183,7 @@ variable "use_single_nat_gateway" {
 variable "langfuse_helm_chart_version" {
   description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.0 or newer, which is where langfuse.aiFeatures.* was added."
   type        = string
-  default     = "2.2.0"
+  default     = "2.2.1"
 
   validation {
     # try() keeps a non-semver tag working: a deliberate custom build is left
