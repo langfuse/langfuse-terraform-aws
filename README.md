@@ -11,7 +11,7 @@ This module aims to provide a production-ready, secure, and scalable deployment 
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.8"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.9"
 
   domain = "langfuse.example.com"
 
@@ -168,7 +168,7 @@ If you already have a VPC and want to deploy Langfuse into it, you can provide t
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.8"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.9"
 
   domain = "langfuse.example.com"
 
@@ -393,7 +393,7 @@ For example, to increase ClickHouse Keeper resources:
 
 ```hcl
 module "langfuse" {
-  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.8"
+  source = "github.com/langfuse/langfuse-terraform-aws?ref=1.2.9"
 
   domain = "langfuse.example.com"
 
