@@ -313,6 +313,12 @@ variable "cert_manager_chart_version" {
   default     = "v1.20.2"
 }
 
+variable "aws_load_balancer_controller_chart_version" {
+  description = "Version of the AWS Load Balancer Controller Helm chart (https://aws.github.io/eks-charts). The default is the version the module has always installed; set it to a current chart (3.6.2 at the time of writing, since chart 3.0.0 the chart version matches the controller version) to get a controller with current security patches. Helm does not upgrade CRDs on an existing installation: before raising this on a running cluster, apply the chart's CRDs with `kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\"`."
+  type        = string
+  default     = "1.7.1"
+}
+
 variable "external_clickhouse" {
   description = "Use an external ClickHouse deployment (e.g. ClickHouse Cloud) instead of deploying ClickHouse into the EKS cluster. Set external_clickhouse_password as well. Prefix the host with https:// to connect via HTTPS. The defaults match ClickHouse Cloud; set cluster_enabled = false for ClickHouse Cloud on Azure or single-node deployments. When set, no EFS file system is created."
   type = object({

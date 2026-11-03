@@ -51,6 +51,7 @@ resource "aws_iam_policy" "aws_load_balancer_controller" {
           "ec2:DescribeAddresses",
           "ec2:DescribeAvailabilityZones",
           "ec2:DescribeInternetGateways",
+          "ec2:DescribeRouteTables",
           "ec2:DescribeVpcs",
           "ec2:DescribeVpcPeeringConnections",
           "ec2:DescribeSubnets",
@@ -299,7 +300,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
-  version    = "1.7.1"
+  version    = var.aws_load_balancer_controller_chart_version
 
   set {
     name  = "clusterName"
