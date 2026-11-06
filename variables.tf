@@ -301,6 +301,12 @@ variable "clickhouse_keeper_storage_size" {
   default     = "8Gi"
 }
 
+variable "clickhouse_image_tag" {
+  description = "Tag of the ClickHouse server and Keeper images for the in-cluster ClickHouse, e.g. to pick up a patch release before the Langfuse Helm chart does. Null keeps the chart's default. Server and Keeper share the tag, as the chart recommends."
+  type        = string
+  default     = null
+}
+
 variable "clickhouse_operator_chart_version" {
   description = "Version of the ClickHouse operator Helm chart (oci://ghcr.io/clickhouse/clickhouse-operator-helm). The default matches the version the Langfuse Helm chart is tested against."
   type        = string
