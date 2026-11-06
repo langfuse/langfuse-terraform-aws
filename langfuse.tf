@@ -76,6 +76,10 @@ clickhouse:
     existingSecretKey: clickhouse-password
   cluster:
     replicas: ${var.clickhouse_replicas}
+%{if var.clickhouse_image_tag != null~}
+    image:
+      tag: ${jsonencode(var.clickhouse_image_tag)}
+%{endif~}
     storage:
       size: ${var.clickhouse_storage_size}
       className: efs
@@ -88,6 +92,10 @@ clickhouse:
         memory: "${var.clickhouse_memory}"
   keeper:
     replicas: ${var.clickhouse_keeper_replicas}
+%{if var.clickhouse_image_tag != null~}
+    image:
+      tag: ${jsonencode(var.clickhouse_image_tag)}
+%{endif~}
     storage:
       size: ${var.clickhouse_keeper_storage_size}
       className: efs
