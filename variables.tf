@@ -150,6 +150,12 @@ variable "postgres_version" {
   default     = "15.12"
 }
 
+variable "postgres_deletion_protection" {
+  description = "Whether deletion protection is enabled on the Aurora PostgreSQL cluster. While it is on, AWS refuses to delete the cluster, also on terraform destroy or a replacement, until it is switched off again."
+  type        = bool
+  default     = false
+}
+
 variable "cache_node_type" {
   description = "ElastiCache node type"
   type        = string

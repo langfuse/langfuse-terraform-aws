@@ -53,6 +53,7 @@ resource "aws_rds_cluster" "postgres" {
   db_subnet_group_name         = aws_db_subnet_group.postgres.name
   vpc_security_group_ids       = [aws_security_group.postgres.id]
   skip_final_snapshot          = true
+  deletion_protection          = var.postgres_deletion_protection
   storage_encrypted            = true
   backup_retention_period      = 7
   preferred_backup_window      = "03:00-04:00"
