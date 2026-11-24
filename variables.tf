@@ -15,13 +15,13 @@ variable "domain" {
 }
 
 variable "skip_dns_setup" {
-  description = "When true, skips Route53 zone creation, ACM certificate creation, DNS validation records, and the Route53 alias record for the ALB. Use this when DNS and certificate management are handled externally. certificate_arn must be provided alongside this flag. The load_balancer_dns_name and load_balancer_zone_id outputs can then be used to configure DNS records outside this module."
+  description = "When true, skips Route53 zone creation, ACM certificate creation, DNS validation records, and the Route53 alias records for the ALBs. Use this when DNS and certificate management are handled externally. certificate_arn must be provided alongside this flag. The load_balancer_dns_name and load_balancer_zone_id outputs (and gateway_load_balancer_* when enable_ai_gateway is true) can then be used to configure DNS records outside this module."
   type        = bool
   default     = false
 }
 
 variable "certificate_arn" {
-  description = "ARN of an existing, externally managed ACM certificate. Required when skip_dns_setup is true."
+  description = "ARN of an existing, externally managed ACM certificate. Required when skip_dns_setup is true. When enable_ai_gateway is true, the certificate must also cover gateway_domain."
   type        = string
   default     = null
 
@@ -187,7 +187,7 @@ variable "use_single_nat_gateway" {
 }
 
 variable "langfuse_helm_chart_version" {
-  description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.0 or newer, which is where langfuse.aiFeatures.* was added."
+  description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.0 or newer, which is where langfuse.aiFeatures.* was added. The AI gateway needs 2.2.3 or newer, which is where langfuse.gateway.* was added."
   type        = string
   default     = "2.2.5"
 
@@ -202,6 +202,22 @@ variable "langfuse_helm_chart_version" {
       try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) >= 1)
     )
     error_message = "The AI features need langfuse_helm_chart_version 2.1.0 or newer, which is where langfuse.aiFeatures.* was added. Helm ignores unknown values silently, so an older chart would deploy without them and report nothing."
+  }
+
+  validation {
+    condition = !var.enable_ai_gateway || (
+      try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) > 2 ||
+      (
+        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) == 2 &&
+        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) > 2
+      ) ||
+      (
+        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) == 2 &&
+        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) == 2 &&
+        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[2]), 99) >= 3
+      )
+    )
+    error_message = "The AI gateway needs langfuse_helm_chart_version 2.2.3 or newer, which is where langfuse.gateway.* was added. Helm ignores unknown values silently, so an older chart would deploy without it and fail to find the gateway ALB."
   }
 }
 
@@ -580,6 +596,29 @@ variable "agent_sandbox_image_name" {
   description = "Lambda MicroVM image name. The image ARN is constructed from it, so Terraform can grant permissions before the image exists; create the image with build-microvm-image.sh after apply using the agent_sandbox_build_env output."
   type        = string
   default     = "langfuse-in-app-agent-sandbox"
+}
+
+# AI gateway
+variable "enable_ai_gateway" {
+  description = "Deploy the Langfuse AI gateway behind a dedicated ALB on gateway_domain, add gateway_domain as a SAN on the ACM certificate, and create a Route53 alias record (unless skip_dns_setup is true). Requires langfuse_helm_chart_version >= 2.2.3."
+  type        = bool
+  default     = false
+}
+
+variable "gateway_domain" {
+  description = "Domain name for the Langfuse AI gateway. Defaults to gateway.<domain>. When skip_dns_setup is false, this must be a subdomain of domain so its certificate validation and alias records can be created in the module's Route53 zone."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.gateway_domain == null || (var.gateway_domain != "" && lower(try(trimspace(var.gateway_domain), "")) != "" && lower(try(var.gateway_domain, "")) != lower(var.domain))
+    error_message = "gateway_domain must be a non-empty hostname different from domain."
+  }
+
+  validation {
+    condition     = !var.enable_ai_gateway || var.gateway_domain == null || var.skip_dns_setup || endswith(lower(try(var.gateway_domain, "")), ".${lower(var.domain)}")
+    error_message = "gateway_domain must be a subdomain of domain when skip_dns_setup is false, because the module creates DNS records in the Route53 zone for domain. Set skip_dns_setup = true to use a different domain."
+  }
 }
 
 # Additional environment variables

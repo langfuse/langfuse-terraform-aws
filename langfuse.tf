@@ -241,6 +241,29 @@ langfuse:
       key: encryption_key
 EOT
 
+  # Dedicated ALB for the AI gateway so web's ALB keeps its default 60s idle
+  # timeout. Gateway streams can run up to 600s, so the ALB idle timeout is set
+  # to 620s, and target health checks probe /ready.
+  gateway_values = !var.enable_ai_gateway ? "" : <<EOT
+langfuse:
+  gateway:
+    enabled: true
+    ingress:
+      enabled: true
+      className: alb
+      annotations:
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+        alb.ingress.kubernetes.io/scheme: ${var.alb_scheme}
+        alb.ingress.kubernetes.io/target-type: 'ip'
+        alb.ingress.kubernetes.io/ssl-redirect: '443'
+        alb.ingress.kubernetes.io/inbound-cidrs: ${local.inbound_cidrs_csv}
+        alb.ingress.kubernetes.io/certificate-arn: ${local.certificate_arn}
+        alb.ingress.kubernetes.io/healthcheck-path: '/ready'
+        alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=620
+      hosts:
+        - ${jsonencode(local.gateway_domain)}
+EOT
+
   # The settings map is rendered into a config.d file by the ClickHouse
   # operator; the "@remove" keys translate to the XML remove="1" attribute.
   # We could also consider excluding the following tables on opt-out:
@@ -331,6 +354,7 @@ resource "helm_release" "langfuse" {
     local.langfuse_values,
     local.clickhouse_values,
     local.ingress_values,
+    local.gateway_values,
     local.encryption_values,
     local.additional_env_values,
     local.code_eval_worker_values,

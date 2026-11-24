@@ -35,6 +35,21 @@ output "load_balancer_zone_id" {
   value       = data.aws_lb.ingress.zone_id
 }
 
+output "gateway_url" {
+  description = "Public HTTPS URL of the Langfuse AI gateway. Null when the AI gateway is disabled."
+  value       = var.enable_ai_gateway ? "https://${local.gateway_domain}" : null
+}
+
+output "gateway_load_balancer_dns_name" {
+  description = "DNS name of the ALB created for the Langfuse AI gateway. Null when the AI gateway is disabled."
+  value       = one(data.aws_lb.gateway[*].dns_name)
+}
+
+output "gateway_load_balancer_zone_id" {
+  description = "Hosted zone ID of the AI gateway ALB (for use in external Route53 alias records). Null when the AI gateway is disabled."
+  value       = one(data.aws_lb.gateway[*].zone_id)
+}
+
 output "private_subnet_ids" {
   description = "Private subnet IDs from the VPC module"
   value       = local.private_subnets
