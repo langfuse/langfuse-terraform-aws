@@ -611,12 +611,12 @@ variable "gateway_domain" {
   default     = null
 
   validation {
-    condition     = var.gateway_domain == null || (var.gateway_domain != "" && lower(try(trimspace(var.gateway_domain), "")) != "" && lower(try(var.gateway_domain, "")) != lower(var.domain))
+    condition     = var.gateway_domain == null || (try(trimspace(var.gateway_domain), "") != "" && try(lower(var.gateway_domain), "") != lower(var.domain))
     error_message = "gateway_domain must be a non-empty hostname different from domain."
   }
 
   validation {
-    condition     = !var.enable_ai_gateway || var.gateway_domain == null || var.skip_dns_setup || endswith(lower(try(var.gateway_domain, "")), ".${lower(var.domain)}")
+    condition     = !var.enable_ai_gateway || var.gateway_domain == null || var.skip_dns_setup || endswith(try(lower(var.gateway_domain), ""), ".${lower(var.domain)}")
     error_message = "gateway_domain must be a subdomain of domain when skip_dns_setup is false, because the module creates DNS records in the Route53 zone for domain. Set skip_dns_setup = true to use a different domain."
   }
 }
