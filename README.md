@@ -40,7 +40,7 @@ module "langfuse" {
   cache_instance_count = 2
 
   # Optional: Configure Langfuse Helm chart version
-  langfuse_helm_chart_version = "2.2.5"
+  langfuse_helm_chart_version = "2.3.0"
 
   # Optional: Pin the Langfuse application version. Defaults to the latest
   # release at the time this module version was published.
@@ -395,7 +395,7 @@ by an upgrade surfaces as file or bash tools misbehaving rather than as a clear 
 ### AI Gateway
 
 Set `enable_ai_gateway = true` to deploy the Langfuse AI gateway alongside Langfuse (off by
-default, requires Helm chart `>= 2.2.3`).
+default, requires Helm chart `>= 2.3`).
 
 ```hcl
 module "langfuse" {
@@ -578,7 +578,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | postgres_deletion_protection      | Whether deletion protection is enabled on the Aurora PostgreSQL cluster                                                                                  | bool         | false                                                                                |    no    |
 | cache_node_type                   | ElastiCache node type                                                                                                                                    | string       | "cache.t4g.small"                                                                    |    no    |
 | cache_instance_count              | Number of ElastiCache instances                                                                                                                          | number       | 1                                                                                    |    no    |
-| langfuse_helm_chart_version       | Version of the Langfuse Helm chart to deploy; AI features need >= 2.1.0, AI gateway needs >= 2.2.3                                                                       | string       | "2.2.5"                                                                              |    no    |
+| langfuse_helm_chart_version       | Version of the Langfuse Helm chart to deploy; AI features need >= 2.1.0, AI gateway needs >= 2.3                                                                         | string       | "2.3.0"                                                                              |    no    |
 | app_version                       | Langfuse application version (Docker image tag) to deploy. Defaults to the latest release at the time this module version was published.                 | string       | "4.83.0"                                                                             |    no    |
 | langfuse_cpu                      | CPU allocation for Langfuse containers                                                                                                                   | string       | "2"                                                                                  |    no    |
 | langfuse_memory                   | Memory allocation for Langfuse containers                                                                                                                | string       | "4Gi"                                                                                |    no    |
@@ -624,7 +624,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | enable_in_app_agent               | Set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker. Requires enable_ai_features and Langfuse >= 4.25                                                     | bool         | false                                                                                |    no    |
 | enable_agent_sandbox_microvm      | Create the Lambda MicroVM sandbox for the in-app agent's code execution tools. Image build is out of band                                                  | bool         | false                                                                                |    no    |
 | agent_sandbox_image_name          | Lambda MicroVM image name used to construct the image ARN                                                                                                 | string       | "langfuse-in-app-agent-sandbox"                                                      |    no    |
-| enable_ai_gateway                 | Deploy the Langfuse AI gateway behind a dedicated ALB on gateway_domain. Requires Helm chart >= 2.2.3                                                     | bool         | false                                                                                |    no    |
+| enable_ai_gateway                 | Deploy the Langfuse AI gateway behind a dedicated ALB on gateway_domain. Requires Helm chart >= 2.3                                                       | bool         | false                                                                                |    no    |
 | gateway_domain                    | Domain name for the Langfuse AI gateway; defaults to `gateway.<domain>`                                                                                   | string       | null                                                                                 |    no    |
 
 ## Outputs

@@ -187,9 +187,9 @@ variable "use_single_nat_gateway" {
 }
 
 variable "langfuse_helm_chart_version" {
-  description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.0 or newer, which is where langfuse.aiFeatures.* was added. The AI gateway needs 2.2.3 or newer, which is where langfuse.gateway.* was added."
+  description = "Version of the Langfuse Helm chart to deploy. The AI features need 2.1.0 or newer, which is where langfuse.aiFeatures.* was added. The AI gateway needs >= 2.3 (written without a patch component so update-langfuse-versions.yml does not rewrite the floor), which wires Redis for spend limits into langfuse.gateway.*."
   type        = string
-  default     = "2.2.5"
+  default     = "2.3.0"
 
   validation {
     # try() keeps a non-semver tag working: a deliberate custom build is left
@@ -206,18 +206,11 @@ variable "langfuse_helm_chart_version" {
 
   validation {
     condition = !var.enable_ai_gateway || (
-      try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) > 2 ||
-      (
-        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) == 2 &&
-        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) > 2
-      ) ||
-      (
-        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) == 2 &&
-        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) == 2 &&
-        try(tonumber(regex("^(\\d+)\\.(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[2]), 99) >= 3
-      )
+      try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) > 2 ||
+      (try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[0]), 99) == 2 &&
+      try(tonumber(regex("^(\\d+)\\.(\\d+)", var.langfuse_helm_chart_version)[1]), 99) >= 3)
     )
-    error_message = "The AI gateway needs langfuse_helm_chart_version 2.2.3 or newer, which is where langfuse.gateway.* was added. Helm ignores unknown values silently, so an older chart would deploy without it and fail to find the gateway ALB."
+    error_message = "The AI gateway needs langfuse_helm_chart_version >= 2.3, which wires Redis for spend limits into langfuse.gateway.*. Helm ignores unknown values silently, so an older chart would deploy without gateway Redis or without the gateway."
   }
 }
 
@@ -600,7 +593,7 @@ variable "agent_sandbox_image_name" {
 
 # AI gateway
 variable "enable_ai_gateway" {
-  description = "Deploy the Langfuse AI gateway behind a dedicated ALB on gateway_domain, add gateway_domain as a SAN on the ACM certificate, and create a Route53 alias record (unless skip_dns_setup is true). Requires langfuse_helm_chart_version >= 2.2.3."
+  description = "Deploy the Langfuse AI gateway behind a dedicated ALB on gateway_domain, add gateway_domain as a SAN on the ACM certificate, and create a Route53 alias record (unless skip_dns_setup is true). Requires langfuse_helm_chart_version >= 2.3."
   type        = bool
   default     = false
 }
