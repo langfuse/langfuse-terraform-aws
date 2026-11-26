@@ -257,7 +257,7 @@ langfuse:
         alb.ingress.kubernetes.io/target-type: 'ip'
         alb.ingress.kubernetes.io/ssl-redirect: '443'
         alb.ingress.kubernetes.io/inbound-cidrs: ${local.inbound_cidrs_csv}
-        alb.ingress.kubernetes.io/certificate-arn: ${local.certificate_arn}
+        alb.ingress.kubernetes.io/certificate-arn: ${local.gateway_certificate_arn}
         alb.ingress.kubernetes.io/healthcheck-path: '/ready'
         alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=620
       hosts:

@@ -228,7 +228,7 @@ provider "helm" {
 
 > :information_source: For more information on Langfuse's architecture, please check [the official documentation](https://langfuse.com/self-hosting#architecture)
 
-When `enable_ai_gateway = true`, the module also deploys the Langfuse AI gateway in EKS Fargate behind a dedicated Application Load Balancer on `gateway_domain` (default `gateway.<domain>`), with a 620s idle timeout for streaming LLM responses and `/ready` health checks. Unless `skip_dns_setup = true`, `gateway_domain` is added as a SAN on the ACM certificate and routed to the gateway ALB via a Route53 alias record.
+When `enable_ai_gateway = true`, the module also deploys the Langfuse AI gateway in EKS Fargate behind a dedicated Application Load Balancer on `gateway_domain` (default `gateway.<domain>`), with a 620s idle timeout for streaming LLM responses and `/ready` health checks. Unless `skip_dns_setup = true`, the module provisions a dedicated ACM certificate (with Route53 DNS validation) and a Route53 alias record for `gateway_domain`.
 
 ## Resource Configuration
 
@@ -411,10 +411,10 @@ When enabled, the module:
 
 - Enables `langfuse.gateway` and its Kubernetes Ingress in the Langfuse Helm chart on `gateway_domain` (`gateway.<domain>` by default).
 - Provisions a dedicated ALB for the gateway — separate from web's ALB so web keeps its default idle timeout — configured with a 620s idle timeout (to accommodate streaming responses up to 600s), `/ready` health checks, and the same `alb_scheme`, `ingress_inbound_cidrs`, TLS, and HTTPS redirect settings as web.
-- Adds `gateway_domain` as a SAN on the module-managed ACM certificate and creates a Route53 alias record pointing `gateway_domain` at the gateway ALB.
+- Creates a dedicated ACM certificate for `gateway_domain` (with DNS validation in the module's Route53 zone, leaving web's certificate untouched) and a Route53 alias record pointing `gateway_domain` at the gateway ALB.
 
-When `skip_dns_setup = true`, the externally managed `certificate_arn` must also cover
-`gateway_domain`, and you should point your external DNS record for `gateway_domain` at the
+When `skip_dns_setup = true`, provide `gateway_certificate_arn` (or ensure `certificate_arn`
+also covers `gateway_domain`) and point your external DNS record for `gateway_domain` at the
 `gateway_load_balancer_dns_name` (and `gateway_load_balancer_zone_id` for Route53) outputs.
 
 ### Customizing Resources
@@ -560,7 +560,7 @@ A destroy that appears stuck is usually just working through these — do **not*
 | postgres_version                  | PostgreSQL engine version to use                                                                                                                         | string       | "15.12"                                                                              |    no    |
 | additional_env                    | Additional environment variables to set on Langfuse pods                                                                                                 | list(object) | []                                                                                   |    no    |
 | skip_dns_setup                    | Skip the Route53 zone, ACM certificate, DNS validation records and the ALB alias records, for externally managed DNS. Requires certificate_arn.           | bool         | false                                                                                |    no    |
-| certificate_arn                   | ARN of an existing, externally managed ACM certificate. Required when skip_dns_setup is true (must also cover gateway_domain when enable_ai_gateway is true). | string       | null                                                                                 |    no    |
+| certificate_arn                   | ARN of an existing, externally managed ACM certificate. Required when skip_dns_setup is true (must also cover gateway_domain if enable_ai_gateway is true and gateway_certificate_arn is unset). | string       | null                                                                                 |    no    |
 | name                              | Name prefix for resources                                                                                                                                | string       | "langfuse"                                                                           |    no    |
 | domain                            | Domain name used for resource naming                                                                                                                     | string       | n/a                                                                                  |   yes    |
 | vpc_cidr                          | CIDR block for VPC                                                                                                                                       | string       | "10.0.0.0/16"                                                                        |    no    |
@@ -624,8 +624,9 @@ A destroy that appears stuck is usually just working through these — do **not*
 | enable_in_app_agent               | Set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker. Requires enable_ai_features and Langfuse >= 4.25                                                     | bool         | false                                                                                |    no    |
 | enable_agent_sandbox_microvm      | Create the Lambda MicroVM sandbox for the in-app agent's code execution tools. Image build is out of band                                                  | bool         | false                                                                                |    no    |
 | agent_sandbox_image_name          | Lambda MicroVM image name used to construct the image ARN                                                                                                 | string       | "langfuse-in-app-agent-sandbox"                                                      |    no    |
-| enable_ai_gateway                 | Deploy the Langfuse AI gateway behind a dedicated ALB on gateway_domain. Requires Helm chart >= 2.3                                                       | bool         | false                                                                                |    no    |
+| enable_ai_gateway                 | Deploy the Langfuse AI gateway behind a dedicated ALB on gateway_domain with its own ACM cert and Route53 record. Requires Helm chart >= 2.3              | bool         | false                                                                                |    no    |
 | gateway_domain                    | Domain name for the Langfuse AI gateway; defaults to `gateway.<domain>`                                                                                   | string       | null                                                                                 |    no    |
+| gateway_certificate_arn           | ARN of an externally managed ACM certificate for gateway_domain when skip_dns_setup and enable_ai_gateway are true; defaults to certificate_arn           | string       | null                                                                                 |    no    |
 
 ## Outputs
 

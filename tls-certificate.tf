@@ -1,9 +1,8 @@
 # ACM Certificate for the domain (skipped when skip_dns_setup is true)
 resource "aws_acm_certificate" "cert" {
-  count                     = var.skip_dns_setup ? 0 : 1
-  domain_name               = var.domain
-  subject_alternative_names = var.enable_ai_gateway ? [local.gateway_domain] : null
-  validation_method         = "DNS"
+  count             = var.skip_dns_setup ? 0 : 1
+  domain_name       = var.domain
+  validation_method = "DNS"
 
   tags = {
     Name = local.tag_name
@@ -75,6 +74,46 @@ resource "aws_route53_record" "langfuse" {
     zone_id                = data.aws_lb.ingress.zone_id
     evaluate_target_health = true
   }
+}
+
+# ACM Certificate for the AI gateway domain (only created when enable_ai_gateway is true and skip_dns_setup is false)
+resource "aws_acm_certificate" "gateway" {
+  count             = var.enable_ai_gateway && !var.skip_dns_setup ? 1 : 0
+  domain_name       = local.gateway_domain
+  validation_method = "DNS"
+
+  tags = {
+    Name = "${local.tag_name} AI Gateway"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Create DNS records for AI gateway certificate validation (skipped when skip_dns_setup is true or AI gateway is disabled)
+resource "aws_route53_record" "gateway_cert_validation" {
+  for_each = var.enable_ai_gateway && !var.skip_dns_setup ? {
+    for dvo in aws_acm_certificate.gateway[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  } : {}
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = aws_route53_zone.zone[0].zone_id
+}
+
+# AI gateway certificate validation (skipped when skip_dns_setup is true or AI gateway is disabled)
+resource "aws_acm_certificate_validation" "gateway" {
+  count                   = var.enable_ai_gateway && !var.skip_dns_setup ? 1 : 0
+  certificate_arn         = aws_acm_certificate.gateway[0].arn
+  validation_record_fqdns = [for record in aws_route53_record.gateway_cert_validation : record.fqdn]
 }
 
 # Get the AI gateway ALB details (only created when enable_ai_gateway is true)

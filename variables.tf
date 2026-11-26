@@ -21,7 +21,7 @@ variable "skip_dns_setup" {
 }
 
 variable "certificate_arn" {
-  description = "ARN of an existing, externally managed ACM certificate. Required when skip_dns_setup is true. When enable_ai_gateway is true, the certificate must also cover gateway_domain."
+  description = "ARN of an existing, externally managed ACM certificate. Required when skip_dns_setup is true. When enable_ai_gateway is true and gateway_certificate_arn is not set, this certificate must also cover gateway_domain."
   type        = string
   default     = null
 
@@ -593,7 +593,7 @@ variable "agent_sandbox_image_name" {
 
 # AI gateway
 variable "enable_ai_gateway" {
-  description = "Deploy the Langfuse AI gateway behind a dedicated ALB on gateway_domain, add gateway_domain as a SAN on the ACM certificate, and create a Route53 alias record (unless skip_dns_setup is true). Requires langfuse_helm_chart_version >= 2.3."
+  description = "Deploy the Langfuse AI gateway behind a dedicated ALB on gateway_domain with its own ACM certificate and Route53 alias record (unless skip_dns_setup is true). Requires langfuse_helm_chart_version >= 2.3."
   type        = bool
   default     = false
 }
@@ -611,6 +611,22 @@ variable "gateway_domain" {
   validation {
     condition     = !var.enable_ai_gateway || var.gateway_domain == null || var.skip_dns_setup || endswith(try(lower(var.gateway_domain), ""), ".${lower(var.domain)}")
     error_message = "gateway_domain must be a subdomain of domain when skip_dns_setup is false, because the module creates DNS records in the Route53 zone for domain. Set skip_dns_setup = true to use a different domain."
+  }
+}
+
+variable "gateway_certificate_arn" {
+  description = "ARN of an existing, externally managed ACM certificate for gateway_domain when skip_dns_setup is true and enable_ai_gateway is true. Defaults to certificate_arn if unset."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.gateway_certificate_arn == null || can(regex("^arn:aws[^:]*:acm:", var.gateway_certificate_arn))
+    error_message = "gateway_certificate_arn must be a valid ACM certificate ARN."
+  }
+
+  validation {
+    condition     = var.gateway_certificate_arn == null || var.skip_dns_setup
+    error_message = "gateway_certificate_arn is only used when skip_dns_setup is true; the module creates and validates its own AI gateway certificate otherwise."
   }
 }
 
