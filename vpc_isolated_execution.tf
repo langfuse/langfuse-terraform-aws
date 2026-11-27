@@ -33,7 +33,7 @@ module "isolated_execution_vpc" {
   count = local.isolated_execution_enabled ? 1 : 0
 
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
+  version = "6.0.1"
 
   name = "${var.name}-isolated-execution"
   cidr = local.isolated_execution_vpc_cidr
